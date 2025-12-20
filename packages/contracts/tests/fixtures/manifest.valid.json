@@ -1,0 +1,38 @@
+{
+  "manifest_version": 1,
+  "bundle_id": "hktd",
+  "bundle_version": "2025-12-18",
+  "created_at_utc": "2025-12-18T00:00:00Z",
+  "compatibility": {
+    "schema_version": 1,
+    "min_app_version": "1.0.0"
+  },
+  "files": [
+    {
+      "path": "transport.sqlite",
+      "content_type": "application/x-sqlite3",
+      "bytes": 123,
+      "sha256": "d467bc4e5c4dd692554329edaf92a9d3ff2dd5bef7e4c6b73dc2315acbf243f5"
+    }
+  ],
+  "sources": [
+    {
+      "id": "hktd",
+      "authority": "HK Gov",
+      "retrieved_at_utc": "2025-12-18T00:00:00Z",
+      "upstream_ref": "example",
+      "sha256": "a41145068371d6f857713c7d67f441d2aac9d0cbf80b683da4497b3d0c658824"
+    }
+  ],
+  "build": {
+    "etl_version": "0.1.0",
+    "git_commit": "deadbeef",
+    "deterministic": true
+  },
+  "validation": {
+    "passed": true,
+    "checks": [
+      { "id": "row_counts", "passed": true, "details": "ok" }
+    ]
+  }
+}

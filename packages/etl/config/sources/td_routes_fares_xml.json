@@ -1,0 +1,236 @@
+{
+  "spec_version": 1,
+  "id": "td_routes_fares_xml",
+  "authority": "data.gov.hk",
+  "title": "Routes and fares of public transport (XML)",
+  "dataset": {
+    "dataset_id": "hk-td-tis_14-routes-fares-xml",
+    "dataset_url": "https://data.gov.hk/en-data/dataset/hk-td-tis_14-routes-fares-xml",
+    "provider": "Transport Department",
+    "update_frequency": "twice_per_month",
+    "tags": ["hk", "static", "routes", "fares", "td", "data_gov_hk"]
+  },
+  "base_urls": [
+    {
+      "name": "static.data.gov.hk",
+      "url": "https://static.data.gov.hk/td/routes-fares-xml/",
+      "priority": 10,
+      "description": "Primary static host for TD routes/fares XML CSVs."
+    }
+  ],
+  "endpoints": [
+    {
+      "id": "company_code_xml",
+      "title": "Operator code mapping",
+      "description": "Operator code-to-name mapping.",
+      "path": "COMPANY_CODE.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["operators", "reference"],
+      "required": true
+    },
+
+    {
+      "id": "route_bus_xml",
+      "title": "Bus routes and fares",
+      "description": "Route and fare information of bus.",
+      "path": "ROUTE_BUS.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["bus", "routes", "fares"],
+      "required": true
+    },
+    {
+      "id": "rstop_bus_xml",
+      "title": "Bus stop sequence",
+      "description": "Stop sequence of bus route.",
+      "path": "RSTOP_BUS.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["bus", "stop_sequence"],
+      "required": true
+    },
+    {
+      "id": "stop_bus_xml",
+      "title": "Bus stop locations",
+      "description": "Coordinates of bus stops.",
+      "path": "STOP_BUS.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["bus", "stops", "geospatial"],
+      "required": true
+    },
+    {
+      "id": "fare_bus_xml",
+      "title": "Bus section fare",
+      "description": "Section fare of bus route.",
+      "path": "FARE_BUS.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["bus", "fares", "section_fare"],
+      "required": true
+    },
+    {
+      "id": "route_gmb_xml",
+      "title": "GMB routes and fares",
+      "description": "Route and fare information of green minibus (GMB).",
+      "path": "ROUTE_GMB.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["gmb", "minibus", "routes", "fares"],
+      "required": true
+    },
+    {
+      "id": "rstop_gmb_xml",
+      "title": "GMB terminus",
+      "description": "Terminus of GMB route (route endpoints/termini as provided by TD).",
+      "path": "RSTOP_GMB.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["gmb", "minibus", "terminus", "stop_sequence"],
+      "required": true
+    },
+    {
+      "id": "stop_gmb_xml",
+      "title": "GMB terminus locations",
+      "description": "Coordinates of GMB terminus location (as provided by TD).",
+      "path": "STOP_GMB.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["gmb", "minibus", "stops", "terminus", "geospatial"],
+      "required": true
+    },
+    {
+      "id": "fare_gmb_xml",
+      "title": "GMB section fare",
+      "description": "Section fare of GMB route.",
+      "path": "FARE_GMB.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["gmb", "minibus", "fares", "section_fare"],
+      "required": true
+    },
+
+    {
+      "id": "route_ferry_xml",
+      "title": "Ferry routes and fares",
+      "description": "Route and fare information of ferry.",
+      "path": "ROUTE_FERRY.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["ferry", "routes", "fares"],
+      "required": true
+    },
+    {
+      "id": "rstop_ferry_xml",
+      "title": "Ferry stop sequence",
+      "description": "Stop sequence of ferry route.",
+      "path": "RSTOP_FERRY.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["ferry", "stop_sequence"],
+      "required": true
+    },
+    {
+      "id": "stop_ferry_xml",
+      "title": "Ferry pier locations",
+      "description": "Coordinates of ferry pier location.",
+      "path": "STOP_FERRY.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["ferry", "stops", "piers", "geospatial"],
+      "required": true
+    },
+    {
+      "id": "fare_ferry_xml",
+      "title": "Ferry section fare",
+      "description": "Section fare of ferry route.",
+      "path": "FARE_FERRY.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["ferry", "fares", "section_fare"],
+      "required": true
+    },
+    {
+      "id": "route_ptram_xml",
+      "title": "Peak Tram routes and fares",
+      "description": "Route and fare information of Peak Tram.",
+      "path": "ROUTE_PTRAM.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["peak_tram", "tram", "routes", "fares"],
+      "required": true
+    },
+    {
+      "id": "rstop_ptram_xml",
+      "title": "Peak Tram stop sequence",
+      "description": "Stop sequence of Peak Tram route.",
+      "path": "RSTOP_PTRAM.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["peak_tram", "tram", "stop_sequence"],
+      "required": true
+    },
+    {
+      "id": "stop_ptram_xml",
+      "title": "Peak Tram stop locations",
+      "description": "Coordinates of Peak Tram stop location.",
+      "path": "STOP_PTRAM.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["peak_tram", "tram", "stops", "geospatial"],
+      "required": true
+    },
+    {
+      "id": "fare_ptram_xml",
+      "title": "Peak Tram section fare",
+      "description": "Section fare of Peak Tram route.",
+      "path": "FARE_PTRAM.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["peak_tram", "tram", "fares", "section_fare"],
+      "required": true
+    },
+    {
+      "id": "route_tram_xml",
+      "title": "Tram routes and fares",
+      "description": "Route and fare information of tram.",
+      "path": "ROUTE_TRAM.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["tram", "routes", "fares"],
+      "required": true
+    },
+    {
+      "id": "rstop_tram_xml",
+      "title": "Tram stop sequence",
+      "description": "Stop sequence of tram route.",
+      "path": "RSTOP_TRAM.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["tram", "stop_sequence"],
+      "required": true
+    },
+    {
+      "id": "stop_tram_xml",
+      "title": "Tram stop locations",
+      "description": "Coordinates of tram stop location.",
+      "path": "STOP_TRAM.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["tram", "stops", "geospatial"],
+      "required": true
+    },
+    {
+      "id": "fare_tram_xml",
+      "title": "Tram section fare",
+      "description": "Section fare of tram route.",
+      "path": "FARE_TRAM.xml",
+      "format": "xml",
+      "content_type": "application/xml",
+      "tags": ["tram", "fares", "section_fare"],
+      "required": true
+    }
+  ],
+  "tags": ["td", "data_gov_hk", "static", "routes", "fares", "bus", "gmb", "ferry", "tram", "peak_tram"]
+}

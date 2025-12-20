@@ -1,0 +1,8 @@
+{
+  "spec_version": 1,
+  "sources": [
+    "td_routes_fares_xml.json",
+    "td_routes_fares_delta.json",
+    "td_pd_headway_gtfs_en.json"
+  ]
+}

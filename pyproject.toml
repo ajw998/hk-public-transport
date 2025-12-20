@@ -1,0 +1,36 @@
+[project]
+name = "hk-public-transport"
+version = "0.1.0"
+description = "Hong Kong Transportation Data Engine"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = [
+  "packages/*"
+]
+
+[dependency-groups]
+dev = [
+  "pytest",
+  "ruff",
+  "black",
+  "isort",
+  "rich",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+extend-exclude = '''
+/(
+  \.venv
+ | build
+ | dist
+ | src/.*\.egg-info
+)/
+'''

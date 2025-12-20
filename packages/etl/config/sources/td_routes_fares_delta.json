@@ -1,0 +1,234 @@
+{
+  "spec_version": 1,
+  "id": "td_routes_fares_delta",
+  "authority": "data.gov.hk",
+  "title": "Routes/fares delta change feeds (CSV)",
+  "dataset": {
+    "dataset_id": "hk-td-tis_14-routes-fares-xml",
+    "dataset_url": "https://data.gov.hk/en-data/dataset/hk-td-tis_14-routes-fares-xml",
+    "provider": "Transport Department",
+    "update_frequency": "Twice per month",
+    "tags": ["hk", "delta", "routes", "fares"]
+  },
+  "base_urls": [
+    {
+      "name": "static.data.gov.hk",
+      "url": "https://static.data.gov.hk/td/routes-fares-xml/",
+      "priority": 10
+    }
+  ],
+  "endpoints": [
+    {
+      "id": "route_bus_delta_csv",
+      "title": "Bus routes/fares delta",
+      "description": "Delta change on route and fare information of bus.",
+      "path": "ROUTE_BUS.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["bus", "routes", "fares", "delta"],
+      "required": true
+    },
+    {
+      "id": "rstop_bus_delta_csv",
+      "title": "Bus stop sequence delta",
+      "description": "Delta change on stop sequence of bus route.",
+      "path": "RSTOP_BUS.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["bus", "stop_sequence", "delta"],
+      "required": true
+    },
+    {
+      "id": "stop_bus_delta_csv",
+      "title": "Bus stop locations delta",
+      "description": "Delta change on coordination of bus stop location.",
+      "path": "STOP_BUS.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["bus", "delta", "stops", "geospatial"],
+      "required": false
+    },
+    {
+      "id": "fare_bus_delta_csv",
+      "title": "Bus section fare delta",
+      "description": "Delta change on section fare of bus route.",
+      "path": "FARE_BUS.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["bus", "delta", "fares", "section_fare"],
+      "required": false
+    },
+    {
+      "id": "route_gmb_delta_csv",
+      "title": "GMB routes/fares delta",
+      "description": "Delta change on routes and fares of GMB.",
+      "path": "ROUTE_GMB.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["gmb", "minibus", "delta", "routes", "fares"],
+      "required": false
+    },
+    {
+      "id": "rstop_gmb_delta_csv",
+      "title": "GMB terminus delta",
+      "description": "Delta change on terminus of GMB route.",
+      "path": "RSTOP_GMB.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["gmb", "minibus", "delta", "terminus"],
+      "required": false
+    },
+    {
+      "id": "stop_gmb_delta_csv",
+      "title": "GMB terminus locations delta",
+      "description": "Delta change on coordination of GMB terminus location.",
+      "path": "STOP_GMB.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["gmb", "minibus", "delta", "terminus", "geospatial"],
+      "required": false
+    },
+    {
+      "id": "fare_gmb_delta_csv",
+      "title": "GMB section fare delta",
+      "description": "Delta change on section fare of GMB route.",
+      "path": "FARE_GMB.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["gmb", "minibus", "delta", "fares", "section_fare"],
+      "required": false
+    },
+    {
+      "id": "route_ferry_delta_csv",
+      "title": "Ferry routes/fares delta",
+      "description": "Delta change on route and fare information of ferry.",
+      "path": "ROUTE_FERRY.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["ferry", "delta", "routes", "fares"],
+      "required": false
+    },
+    {
+      "id": "rstop_ferry_delta_csv",
+      "title": "Ferry stop sequence delta",
+      "description": "Delta change on stop sequence of ferry route.",
+      "path": "RSTOP_FERRY.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["ferry", "delta", "stop_sequence"],
+      "required": false
+    },
+    {
+      "id": "stop_ferry_delta_csv",
+      "title": "Ferry pier locations delta",
+      "description": "Delta change on coordination of ferry pier location.",
+      "path": "STOP_FERRY.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["ferry", "delta", "piers", "geospatial"],
+      "required": false
+    },
+    {
+      "id": "fare_ferry_delta_csv",
+      "title": "Ferry section fare delta",
+      "description": "Delta change on section fare of ferry route.",
+      "path": "FARE_FERRY.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["ferry", "delta", "fares", "section_fare"],
+      "required": false
+    },
+    {
+      "id": "route_ptram_delta_csv",
+      "title": "Peak Tram routes/fares delta",
+      "description": "Delta change on route and fare information of peak tram.",
+      "path": "ROUTE_PTRAM.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["peak_tram", "tram", "delta", "routes", "fares"],
+      "required": false
+    },
+    {
+      "id": "rstop_ptram_delta_csv",
+      "title": "Peak Tram stop sequence delta",
+      "description": "Delta change on stop sequence of peak tram route.",
+      "path": "RSTOP_PTRAM.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["peak_tram", "tram", "delta", "stop_sequence"],
+      "required": false
+    },
+    {
+      "id": "stop_ptram_delta_csv",
+      "title": "Peak Tram stop locations delta",
+      "description": "Delta change on coordination of peak tram stop location.",
+      "path": "STOP_PTRAM.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["peak_tram", "tram", "delta", "stops", "geospatial"],
+      "required": false
+    },
+    {
+      "id": "fare_ptram_delta_csv",
+      "title": "Peak Tram section fare delta",
+      "description": "Delta change on section fare of Peak Tram route.",
+      "path": "FARE_PTRAM.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["peak_tram", "tram", "delta", "fares", "section_fare"],
+      "required": false
+    },
+    {
+      "id": "route_tram_delta_csv",
+      "title": "Tram routes/fares delta",
+      "description": "Delta change on route and fare information of tram.",
+      "path": "ROUTE_TRAM.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["tram", "delta", "routes", "fares"],
+      "required": false
+    },
+    {
+      "id": "rstop_tram_delta_csv",
+      "title": "Tram stop sequence delta",
+      "description": "Delta change on stop sequence of tram route.",
+      "path": "RSTOP_TRAM.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["tram", "delta", "stop_sequence"],
+      "required": false
+    },
+    {
+      "id": "stop_tram_delta_csv",
+      "title": "Tram stop locations delta",
+      "description": "Delta change on coordination of tram stop location.",
+      "path": "STOP_TRAM.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["tram", "delta", "stops", "geospatial"],
+      "required": false
+    },
+    {
+      "id": "fare_tram_delta_csv",
+      "title": "Tram section fare delta",
+      "description": "Delta change on section fare of tram route.",
+      "path": "FARE_TRAM.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["tram", "delta", "fares", "section_fare"],
+      "required": false
+    },
+
+    {
+      "id": "data_last_updated_date_csv",
+      "title": "Last updated date marker",
+      "description": "CSV indicating upstream refresh date for the whole dataset.",
+      "path": "DATA_LAST_UPDATED_DATE.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["meta", "freshness"],
+      "required": true
+    }
+  ],
+  "tags": ["td", "data_gov_hk", "delta", "routes", "fares", "bus", "gmb", "ferry", "tram", "peak_tram"]
+}

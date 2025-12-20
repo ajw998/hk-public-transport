@@ -1,0 +1,31 @@
+[project]
+name = "hk-public-transport-etl"
+version = "0.1.0"
+description = "Hong Kong Public Transportation ETL Pipeline"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "hk-public-transport-contracts==0.1.0",
+    "httpx>=0.28.1",
+    "jsonschema>=4.25.1",
+    "numpy>=2.3.5",
+    "polars>=1.36.1",
+    "pyarrow>=22.0.0",
+    "pydantic>=2.12.5",
+    "pyproj>=3.7.2",
+    "tenacity>=9.1.2",
+    "rich",
+    "orjson",
+    "structlog",
+    "pydantic-settings>=2.12.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hk_public_transport_etl"]
+
+[tool.uv.sources]
+hk_public_transport_contracts = { workspace = true }

@@ -1,0 +1,75 @@
+{
+  "spec_version": 1,
+  "id": "td_pt_headway_gtfs_en",
+  "authority": "data.gov.hk",
+  "title": "Headway information of public transport services (GTFS) — English",
+  "dataset": {
+    "dataset_id": "hk-td-tis_11-pt-headway-en",
+    "dataset_url": "https://data.gov.hk/en-data/dataset/hk-td-tis_11-pt-headway-en",
+    "provider": "Transport Department",
+    "update_frequency": "biweekly",
+    "tags": ["hk", "static", "gtfs", "headway", "td", "data_gov_hk"]
+  },
+  "base_urls": [
+    {
+      "name": "static.data.gov.hk",
+      "url": "https://static.data.gov.hk/td/pt-headway-en/",
+      "priority": 10,
+      "description": "Primary static host for TD PT headway GTFS (English)."
+    }
+  ],
+  "endpoints": [
+{
+      "id": "data_last_updated_date_csv",
+      "title": "Data last updated date",
+      "description": "A lightweight file indicating last update date for the dataset.",
+      "path": "DATA_LAST_UPDATED_DATE.csv",
+      "format": "csv",
+      "content_type": "text/csv",
+      "tags": ["metadata"],
+      "required": false
+    },
+    {
+      "id": "calendar_txt",
+      "title": "GTFS calendar",
+      "description": "GTFS calendar.txt (service_id validity + weekday flags + date range).",
+      "path": "calendar.txt",
+      "format": "csv",
+      "content_type": "text/plain",
+      "tags": ["gtfs", "calendar", "service"],
+      "required": true
+    },
+    {
+      "id": "trips_txt",
+      "title": "GTFS trips",
+      "description": "GTFS trips.txt (trip_id ties route_id + service_id).",
+      "path": "trips.txt",
+      "format": "csv",
+      "content_type": "text/plain",
+      "tags": ["gtfs", "trips"],
+      "required": true
+    },
+    {
+      "id": "frequencies_txt",
+      "title": "GTFS frequencies (headway)",
+      "description": "GTFS frequencies.txt (start/end window + headway_secs for trip_id).",
+      "path": "frequencies.txt",
+      "format": "csv",
+      "content_type": "text/plain",
+      "tags": ["gtfs", "frequencies", "headway"],
+      "required": true
+    },
+    {
+      "id": "stop_times_txt",
+      "title": "GTFS stop times",
+      "description": "GTFS stop_times.txt (scheduled stop sequence/times per trip_id).",
+      "path": "stop_times.txt",
+      "format": "csv",
+      "content_type": "text/plain",
+      "tags": ["gtfs", "stop_times", "schedule"],
+      "required": true
+    }
+  ],
+  "tags": ["td", "data_gov_hk", "static", "gtfs", "headway", "timetable", "en"]
+}
+
