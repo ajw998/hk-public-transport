@@ -73,7 +73,7 @@ def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _finalize_sqlite_in_place(db_path: Path) -> None:
+def _finalize_sqlite_in_place(db_path: Path, cfg: PublishConfig) -> None:
     """
     Ensure the DB is single-file (no WAL/shm) and consistent.
     Runs on the TEMP copy inside the publish temp directory.
@@ -85,7 +85,12 @@ def _finalize_sqlite_in_place(db_path: Path) -> None:
         conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
         conn.execute("PRAGMA journal_mode = DELETE;")
         conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
-        conn.execute("PRAGMA optimize;")
+        if cfg.run_analyze:
+            conn.execute("ANALYZE;")
+        if cfg.run_vacuum:
+            conn.execute("VACUUM;")
+        if cfg.run_optimize:
+            conn.execute("PRAGMA optimize;")
         conn.commit()
     finally:
         conn.close()
@@ -185,7 +190,7 @@ def run_publish_bundle(
         atomic_write_json(tmp_dir / "validation_summary.json", summary)
 
     # Finalize DB in-place in tmp dir (WAL -> single file)
-    _finalize_sqlite_in_place(tmp_dir / "transport.sqlite")
+    _finalize_sqlite_in_place(tmp_dir / "transport.sqlite", cfg)
 
     # Sources section
     for sid, p in raw_meta_paths.items():

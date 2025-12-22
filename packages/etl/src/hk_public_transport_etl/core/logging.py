@@ -5,6 +5,7 @@ import sys
 from typing import Any
 
 import structlog
+from rich.logging import RichHandler
 from structlog.contextvars import bind_contextvars, clear_contextvars, merge_contextvars
 
 _CONFIGURED = False
@@ -31,23 +32,38 @@ def configure_logging(*, level: str = "INFO", fmt: str = "console") -> None:
     root.handlers.clear()
     root.setLevel(level.upper())
 
-    handler = logging.StreamHandler(stream=sys.stdout)
-    handler.setLevel(level.upper())
-    handler.setFormatter(logging.Formatter("%(message)s"))
-    root.addHandler(handler)
-
-    processors: list[Any] = [
-        merge_contextvars,
-        structlog.processors.add_log_level,
-        structlog.processors.TimeStamper(fmt="iso", utc=True),
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-    ]
-
     if fmt == "console":
-        processors.append(structlog.dev.ConsoleRenderer())
+        handler = RichHandler(
+            rich_tracebacks=True,
+            markup=False,
+            show_time=False,
+            show_path=False,
+            log_time_format="%H:%M:%S",
+            console=None,
+        )
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        processors: list[Any] = [
+            merge_contextvars,
+            structlog.processors.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso", utc=True),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.KeyValueRenderer(sort_keys=True),
+        ]
     else:
-        processors.append(structlog.processors.JSONRenderer())
+        handler = logging.StreamHandler(stream=sys.stdout)
+        handler.setFormatter(logging.Formatter("%(message)s"))
+        processors = [
+            merge_contextvars,
+            structlog.processors.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso", utc=True),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.JSONRenderer(),
+        ]
+
+    handler.setLevel(level.upper())
+    root.addHandler(handler)
 
     structlog.configure(
         processors=processors,

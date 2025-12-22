@@ -27,7 +27,7 @@ from .keys import (
     stop_key,
 )
 
-FINGERPRINT_LEN = 16
+FINGERPRINT_LEN = 6
 NORMALIZE_RULES_VERSION = "td_routes_fares_xml.normalize.v1"
 MODES = ("bus", "gmb", "ferry", "tram", "peak_tram")
 
@@ -473,7 +473,7 @@ def _derive_patterns_for_mode(
         .with_columns(
             pl.col("stop_keys")
             .map_elements(
-                lambda xs: sequence_fingerprint(list(xs), n=16),
+                lambda xs: sequence_fingerprint(list(xs), n=FINGERPRINT_LEN),
                 return_dtype=pl.Utf8,
             )
             .alias("sequence_fingerprint")
@@ -676,7 +676,7 @@ def _normalize_fares_for_mode(
         .with_columns(
             pl.col("route_key")
             .cast(pl.Utf8)
-            .str.extract(r"^td:[^:]+:(.+)$", 1)
+            .str.extract(r"^[^:]+:(.+)$", 1)
             .alias("_route_id_from_key")
         )
         .with_columns(
@@ -746,15 +746,13 @@ def _normalize_fares_for_mode(
         )
         .map_elements(
             lambda s: (
-                f"td:fare_rule:{mode}:{s['operator_id']}:{s['route_key']}:"
-                f"{int(s['route_seq'])}:{int(s['origin_seq'])}:{int(s['destination_seq'])}:"
+                f"{s['route_key']}:"
+                f"{int(s['route_seq'])}:{int(s['origin_seq'])}:{int(s['destination_seq'])}"
             ),
             return_dtype=pl.Utf8,
         )
         .alias("rule_key"),
         pl.lit(None, dtype=pl.Int64).alias("pattern_id"),
-        pl.lit("section", dtype=pl.Utf8).alias("fare_type"),
-        pl.lit("HKD", dtype=pl.Utf8).alias("currency"),
         pl.lit(1, dtype=pl.Int8).alias("is_active"),
     ).select(
         [
@@ -765,8 +763,6 @@ def _normalize_fares_for_mode(
             "pattern_id",
             "origin_seq",
             "destination_seq",
-            "fare_type",
-            "currency",
             "is_active",
             "price",
         ]
@@ -1147,8 +1143,6 @@ def normalize_td_routes_fares_xml(ctx: NormalizeContext) -> NormalizeOutput:
                         "route_key",
                         "origin_seq",
                         "destination_seq",
-                        "fare_type",
-                        "currency",
                         "is_active",
                     ]
                 ),

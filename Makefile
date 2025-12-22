@@ -7,3 +7,8 @@ format:
 format-check:
 	uv run isort --check-only --diff .
 	uv run black --check --diff .
+
+STAGE ?= run
+
+run:
+	uv run python3 -m hk_public_transport_etl.cli $(STAGE)

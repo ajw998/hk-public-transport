@@ -20,7 +20,9 @@ dev = [
   "ruff",
   "black",
   "isort",
+  "duckdb",
   "rich",
+  "pandas>=2.3.3",
 ]
 
 [tool.black]

@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     data_root: Path = Field(default=Path("data"))
     run_root: Path = Field(default=Path("_runs"))
     log_level: str = Field(default="INFO")
-    log_format: LogFormat = Field(default="json")
+    log_format: LogFormat = Field(default="console")
     log_sql: bool = Field(default=False)
 
 

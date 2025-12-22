@@ -59,7 +59,6 @@ def run_stage(
     started_at = utc_now_iso()
 
     ctx.emit("stage.start", stage=stage_id)
-    log.info("stage start")
 
     warnings: list[str] = []
     artifacts: list[ArtifactRef] = []

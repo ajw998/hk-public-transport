@@ -19,6 +19,10 @@ class PublishConfig:
     # Allow re-publishing the same version by replacing the existing dir.
     overwrite: bool = True
 
+    run_analyze: bool = True
+    run_optimize: bool = True
+    run_vacuum: bool = True
+
     signing_private_key_path: str | None = None
     sign_targets: SignTargets = "manifest"
 

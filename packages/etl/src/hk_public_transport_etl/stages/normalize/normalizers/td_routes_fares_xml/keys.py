@@ -5,15 +5,15 @@ import hashlib
 
 def operator_id(company_code: str) -> str:
     cc = company_code.strip().upper()
-    return f"td:operator:{cc}"
+    return f"operator:{cc}"
 
 
 def route_key(*, mode: str, upstream_route_id: str) -> str:
-    return f"td:{mode}:{upstream_route_id.strip()}"
+    return f"{mode}:{upstream_route_id.strip()}"
 
 
 def stop_key(*, mode: str, upstream_stop_id: str) -> str:
-    return f"td:{mode}:{upstream_stop_id.strip()}"
+    return f"{mode}:{upstream_stop_id.strip()}"
 
 
 def sequence_fingerprint(stop_keys: list[str], *, n: int = 12) -> str:

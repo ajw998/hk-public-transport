@@ -174,9 +174,6 @@ CREATE TABLE fare_rules (
   origin_seq             INTEGER CHECK (origin_seq IS NULL OR origin_seq >= 1),
   destination_seq        INTEGER CHECK (destination_seq IS NULL OR destination_seq >= 1),
 
-  fare_type              TEXT NOT NULL CHECK (fare_type IN ('flat','od','section','zone','unknown')),
-  currency               TEXT NOT NULL DEFAULT 'HKD',
-
   is_active              INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1))
 
   CHECK (

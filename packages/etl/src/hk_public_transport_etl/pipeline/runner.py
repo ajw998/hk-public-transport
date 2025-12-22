@@ -137,7 +137,7 @@ class PipelineRunner:
 
         self.logger.info(
             "Run Complete",
-            extra={"status": report.status, "duration_ms": duration},
+            extra={"duration_ms": duration},
         )
 
         exit_code = 0 if report.status == "success" else 1
