@@ -50,5 +50,5 @@ class Timer:
         self.duration_ms = None
         return self
 
-    def __exit__(self) -> None:
+    def __exit__(self, exc_type=None, exc=None, tb=None) -> None:
         self.duration_ms = monotonic_ms() - self._t0_ms

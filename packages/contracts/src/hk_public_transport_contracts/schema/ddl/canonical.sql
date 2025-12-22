@@ -21,7 +21,6 @@ CREATE TABLE operators (
 CREATE TABLE places (
   place_id               INTEGER PRIMARY KEY,
   place_key              TEXT NOT NULL UNIQUE,
-  upstream_stop_key      TEXT NOT NULL UNIQUE,
   place_type             TEXT NOT NULL CHECK (
     place_type IN (
       'stop',            -- generic boarding/alighting point (bus/tram/lr/etc)

@@ -205,12 +205,6 @@ def _normalize_places_for_mode(
                 lambda sid: stop_key(mode=mode, upstream_stop_id=sid),
                 return_dtype=pl.Utf8,
             )
-            .alias("upstream_stop_key"),
-            pl.col("source_stop_id")
-            .map_elements(
-                lambda sid: stop_key(mode=mode, upstream_stop_id=sid),
-                return_dtype=pl.Utf8,
-            )
             .alias("place_key"),
             pl.col("name_en").alias("display_name_en"),
             pl.col("name_tc").alias("display_name_tc"),
@@ -224,7 +218,6 @@ def _normalize_places_for_mode(
     places = places.select(
         [
             "place_key",
-            "upstream_stop_key",
             "place_type",
             "primary_mode",
             "name_en",

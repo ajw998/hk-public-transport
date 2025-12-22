@@ -16,7 +16,8 @@ class PublishConfig:
     refuse_on_failed_validation: bool = True
     fail_on_warn: bool = False
 
-    overwrite: bool = False
+    # Allow re-publishing the same version by replacing the existing dir.
+    overwrite: bool = True
 
     signing_private_key_path: str | None = None
     sign_targets: SignTargets = "manifest"

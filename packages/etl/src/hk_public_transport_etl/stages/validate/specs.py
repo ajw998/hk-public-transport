@@ -66,25 +66,13 @@ def _canonical_base_spec() -> ValidationSpec:
             ),
         ),
         "places": TableSpec(
-            required_columns=(
-                "place_id",
-                ("place_key", "stop_key"),
-                ("upstream_stop_key", "stop_key"),
-            ),
-            not_null_columns=(
-                "place_id",
-                ("place_key", "stop_key"),
-                ("upstream_stop_key", "stop_key"),
-            ),
+            required_columns=("place_id", ("place_key", "stop_key")),
+            not_null_columns=("place_id", ("place_key", "stop_key")),
             sample_sort=("place_id",),
             uniqueness=(
                 UniquenessSpec(columns=("place_id",), code="PLACE_ID_NOT_UNIQUE"),
                 UniquenessSpec(
                     columns=(("place_key", "stop_key"),), code="PLACE_KEY_NOT_UNIQUE"
-                ),
-                UniquenessSpec(
-                    columns=(("upstream_stop_key", "stop_key"),),
-                    code="UPSTREAM_STOP_KEY_NOT_UNIQUE",
                 ),
             ),
         ),
