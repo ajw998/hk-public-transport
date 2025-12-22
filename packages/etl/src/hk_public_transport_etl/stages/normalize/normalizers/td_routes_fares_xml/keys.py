@@ -3,17 +3,17 @@ from __future__ import annotations
 import hashlib
 
 
-def operator_id(*, prefix: str, company_code: str) -> str:
+def operator_id(company_code: str) -> str:
     cc = company_code.strip().upper()
-    return f"{prefix}:operator:{cc}"
+    return f"td:operator:{cc}"
 
 
-def route_key(*, mode: str, route_id: str) -> str:
-    return f"td:{mode}:{route_id.strip()}"
+def route_key(*, mode: str, upstream_route_id: str) -> str:
+    return f"td:{mode}:{upstream_route_id.strip()}"
 
 
-def stop_key(*, mode: str, stop_id: str) -> str:
-    return f"td:{mode}:{stop_id.strip()}"
+def stop_key(*, mode: str, upstream_stop_id: str) -> str:
+    return f"td:{mode}:{upstream_stop_id.strip()}"
 
 
 def sequence_fingerprint(stop_keys: list[str], *, n: int = 12) -> str:

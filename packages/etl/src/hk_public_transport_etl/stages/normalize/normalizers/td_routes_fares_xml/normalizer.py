@@ -18,56 +18,28 @@ from ...common import (
 )
 from ...types import NormalizeContext, NormalizeOutput
 from .coordinates import add_lat_lon_from_hk80
+from .keys import (
+    direction_id_from_route_seq,
+    operator_id,
+    pattern_key,
+    route_key,
+    sequence_fingerprint,
+    stop_key,
+)
 
+FINGERPRINT_LEN = 16
 NORMALIZE_RULES_VERSION = "td_routes_fares_xml.normalize.v1"
 MODES = ("bus", "gmb", "ferry", "tram", "peak_tram")
 
 
 @dataclass(frozen=True, slots=True)
 class NormalizeConfig:
-    operator_id_prefix: str = "td:operator:"
-    fingerprint_len: int = 16
     route_seq_outbound_is_1: bool = True
     fail_on_missing_route_ref: bool = False
     fail_on_missing_stop_ref: bool = False
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
-
-
-def operator_id(*, prefix: str, company_code: str) -> str:
-    return f"{prefix}{company_code}"
-
-
-def route_key(*, mode: str, route_id: str) -> str:
-    return f"td:{mode}:{route_id}"
-
-
-def stop_key(*, mode: str, stop_id: str) -> str:
-    return f"td:{mode}:{stop_id}"
-
-
-def sequence_fingerprint(keys: list[str], *, n: int) -> str:
-    import hashlib
-
-    h = hashlib.sha256()
-    for k in keys:
-        h.update(k.encode("utf-8"))
-        h.update(b"\0")
-    return h.hexdigest()[: max(8, int(n))]
-
-
-def pattern_key(*, route_key: str, route_seq: int, fingerprint: str) -> str:
-    return f"{route_key}:{int(route_seq)}:{fingerprint}"
-
-
-def direction_id_from_route_seq(route_seq: int, *, outbound_is_1: bool) -> int:
-    # TD route_seq is typically 1/2
-    if route_seq == 1:
-        return 1 if outbound_is_1 else 2
-    if route_seq == 2:
-        return 2 if outbound_is_1 else 1
-    return 0
 
 
 def clean_name(s: str | None) -> str | None:
@@ -157,7 +129,7 @@ def _load_mode_tables(
 
 
 def _normalize_operators(
-    cfg: NormalizeConfig, company_code: pl.DataFrame
+    _: NormalizeConfig, company_code: pl.DataFrame
 ) -> pl.DataFrame:
     require_columns(
         company_code,
@@ -182,7 +154,7 @@ def _normalize_operators(
         .with_columns(
             pl.col("COMPANY_CODE")
             .map_elements(
-                lambda c: operator_id(prefix=cfg.operator_id_prefix, company_code=c),
+                lambda c: operator_id(company_code=c),
                 return_dtype=pl.Utf8,
             )
             .alias("operator_id")
@@ -202,7 +174,7 @@ def _normalize_operators(
 
 
 def _normalize_places_for_mode(
-    cfg: NormalizeConfig,
+    _: NormalizeConfig,
     *,
     source_id: str,
     mode: str,
@@ -230,7 +202,14 @@ def _normalize_places_for_mode(
             pl.lit(_mode_primary_mode(mode), dtype=pl.Utf8).alias("primary_mode"),
             pl.col("source_stop_id")
             .map_elements(
-                lambda sid: stop_key(mode=mode, stop_id=sid), return_dtype=pl.Utf8
+                lambda sid: stop_key(mode=mode, upstream_stop_id=sid),
+                return_dtype=pl.Utf8,
+            )
+            .alias("upstream_stop_key"),
+            pl.col("source_stop_id")
+            .map_elements(
+                lambda sid: stop_key(mode=mode, upstream_stop_id=sid),
+                return_dtype=pl.Utf8,
             )
             .alias("place_key"),
             pl.col("name_en").alias("display_name_en"),
@@ -245,6 +224,7 @@ def _normalize_places_for_mode(
     places = places.select(
         [
             "place_key",
+            "upstream_stop_key",
             "place_type",
             "primary_mode",
             "name_en",
@@ -284,7 +264,7 @@ def _normalize_places_for_mode(
 
 
 def _normalize_routes_for_mode(
-    cfg: NormalizeConfig, *, source_id: str, mode: str, route: pl.DataFrame
+    _: NormalizeConfig, *, source_id: str, mode: str, route: pl.DataFrame
 ) -> tuple[pl.DataFrame, pl.DataFrame]:
     require_columns(
         route,
@@ -322,7 +302,7 @@ def _normalize_routes_for_mode(
 
     r = (
         route.select(
-            pl.col("ROUTE_ID").cast(pl.Utf8).alias("source_route_id"),
+            pl.col("ROUTE_ID").cast(pl.Utf8).str.strip_chars().alias("source_route_id"),
             pl.col("COMPANY_CODE").cast(pl.Utf8).alias("COMPANY_CODE"),
             pl.col("ROUTE_NAMEE")
             .map_elements(clean_name, return_dtype=pl.Utf8)
@@ -369,16 +349,17 @@ def _normalize_routes_for_mode(
             pl.lit(mode, dtype=pl.Utf8).alias("mode"),
             pl.col("COMPANY_CODE")
             .map_elements(
-                lambda c: operator_id(prefix=cfg.operator_id_prefix, company_code=c),
+                lambda c: operator_id(company_code=c),
                 return_dtype=pl.Utf8,
             )
             .alias("operator_id"),
             pl.col("source_route_id")
             .map_elements(
-                lambda rid: route_key(mode=mode, route_id=rid),
+                lambda rid: route_key(mode=mode, upstream_route_id=rid),
                 return_dtype=pl.Utf8,
             )
             .alias("route_key"),
+            pl.col("source_route_id").alias("upstream_route_id"),
             pl.lit(1, dtype=pl.Int8).alias("is_active"),
         )
         .with_columns(
@@ -387,6 +368,7 @@ def _normalize_routes_for_mode(
         .select(
             [
                 "route_key",
+                "upstream_route_id",
                 "mode",
                 "operator_id",
                 "route_short_name",
@@ -462,12 +444,14 @@ def _derive_patterns_for_mode(
     ).with_columns(
         pl.col("source_route_id")
         .map_elements(
-            lambda rid: route_key(mode=mode, route_id=rid), return_dtype=pl.Utf8
+            lambda rid: route_key(mode=mode, upstream_route_id=rid),
+            return_dtype=pl.Utf8,
         )
         .alias("route_key"),
         pl.col("source_stop_id")
         .map_elements(
-            lambda sid: stop_key(mode=mode, stop_id=sid), return_dtype=pl.Utf8
+            lambda sid: stop_key(mode=mode, upstream_stop_id=sid),
+            return_dtype=pl.Utf8,
         )
         .alias("place_key"),
     )
@@ -496,7 +480,7 @@ def _derive_patterns_for_mode(
         .with_columns(
             pl.col("stop_keys")
             .map_elements(
-                lambda xs: sequence_fingerprint(list(xs), n=cfg.fingerprint_len),
+                lambda xs: sequence_fingerprint(list(xs), n=16),
                 return_dtype=pl.Utf8,
             )
             .alias("sequence_fingerprint")
@@ -776,8 +760,6 @@ def _normalize_fares_for_mode(
         )
         .alias("rule_key"),
         pl.lit(None, dtype=pl.Int64).alias("pattern_id"),
-        pl.lit(None, dtype=pl.Int64).alias("origin_place_id"),
-        pl.lit(None, dtype=pl.Int64).alias("destination_place_id"),
         pl.lit("section", dtype=pl.Utf8).alias("fare_type"),
         pl.lit("HKD", dtype=pl.Utf8).alias("currency"),
         pl.lit(1, dtype=pl.Int8).alias("is_active"),
@@ -788,8 +770,6 @@ def _normalize_fares_for_mode(
             "mode",
             "route_key",
             "pattern_id",
-            "origin_place_id",
-            "destination_place_id",
             "origin_seq",
             "destination_seq",
             "fare_type",

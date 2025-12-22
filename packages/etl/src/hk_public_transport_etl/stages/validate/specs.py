@@ -66,23 +66,49 @@ def _canonical_base_spec() -> ValidationSpec:
             ),
         ),
         "places": TableSpec(
-            required_columns=("place_id", ("place_key", "stop_key")),
-            not_null_columns=("place_id", ("place_key", "stop_key")),
+            required_columns=(
+                "place_id",
+                ("place_key", "stop_key"),
+                ("upstream_stop_key", "stop_key"),
+            ),
+            not_null_columns=(
+                "place_id",
+                ("place_key", "stop_key"),
+                ("upstream_stop_key", "stop_key"),
+            ),
             sample_sort=("place_id",),
             uniqueness=(
                 UniquenessSpec(columns=("place_id",), code="PLACE_ID_NOT_UNIQUE"),
                 UniquenessSpec(
                     columns=(("place_key", "stop_key"),), code="PLACE_KEY_NOT_UNIQUE"
                 ),
+                UniquenessSpec(
+                    columns=(("upstream_stop_key", "stop_key"),),
+                    code="UPSTREAM_STOP_KEY_NOT_UNIQUE",
+                ),
             ),
         ),
         "routes": TableSpec(
-            required_columns=("route_id", "route_key", "operator_id"),
-            not_null_columns=("route_id", "route_key", "operator_id"),
+            required_columns=(
+                "route_id",
+                "route_key",
+                "operator_id",
+                "upstream_route_id",
+            ),
+            not_null_columns=(
+                "route_id",
+                "route_key",
+                "operator_id",
+                "upstream_route_id",
+            ),
             sample_sort=("route_id",),
             uniqueness=(
                 UniquenessSpec(columns=("route_id",), code="ROUTE_ID_NOT_UNIQUE"),
                 UniquenessSpec(columns=("route_key",), code="ROUTE_KEY_NOT_UNIQUE"),
+                UniquenessSpec(
+                    columns=("mode", "upstream_route_id"),
+                    code="UPSTREAM_ROUTE_ID_NOT_UNIQUE",
+                ),
             ),
         ),
         "route_patterns": TableSpec(

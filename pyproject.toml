@@ -34,3 +34,7 @@ extend-exclude = '''
  | src/.*\.egg-info
 )/
 '''
+
+[tool.isort]
+profile = "black"
+line_length = 88

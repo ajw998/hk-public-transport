@@ -21,6 +21,7 @@ CREATE TABLE operators (
 CREATE TABLE places (
   place_id               INTEGER PRIMARY KEY,
   place_key              TEXT NOT NULL UNIQUE,
+  upstream_stop_key      TEXT NOT NULL UNIQUE,
   place_type             TEXT NOT NULL CHECK (
     place_type IN (
       'stop',            -- generic boarding/alighting point (bus/tram/lr/etc)
@@ -65,8 +66,9 @@ CREATE TABLE routes (
   -- IMPORTANT: `route_id` is the internal id, not the upstream id. To perform upstream route_id correlation,
   -- use the `route_key` instead.
   route_id               INTEGER PRIMARY KEY,
-  -- This is the canonical stable key. Review `Identifier Strategy`
+  -- This is the canonical stable key.
   route_key              TEXT NOT NULL UNIQUE,
+  upstream_route_id      TEXT NOT NULL,
 
   mode                   TEXT NOT NULL CHECK (
     mode IN ('bus','gmb','mtr','lightrail','mtr_bus','ferry','tram','peak_tram')
@@ -95,6 +97,7 @@ CREATE TABLE routes (
 
 CREATE INDEX idx_routes_mode_op_short ON routes(mode, operator_id, route_short_name);
 CREATE INDEX idx_routes_operator_mode ON routes(operator_id, mode, is_active);
+CREATE INDEX idx_routes_mode_upstream ON routes(mode, upstream_route_id);
 
 -- Route patterns
 CREATE TABLE route_patterns (
@@ -160,16 +163,14 @@ CREATE TABLE fare_products (
 -- Fare rules
 CREATE TABLE fare_rules (
   fare_rule_id           INTEGER PRIMARY KEY,
-  rule_key               TEXT NOT NULL UNIQUE, -- stable canonical key
+  -- Canonical stable fare_rule key
+  rule_key               TEXT NOT NULL UNIQUE,
 
   operator_id            TEXT NOT NULL REFERENCES operators(operator_id),
   mode                   TEXT NOT NULL CHECK (mode IN ('bus','gmb','mtr','lightrail','mtr_bus','ferry','tram','peak_tram')),
 
   route_id               INTEGER REFERENCES routes(route_id),
   pattern_id             INTEGER REFERENCES route_patterns(pattern_id),
-
-  origin_place_id        INTEGER REFERENCES places(place_id),
-  destination_place_id   INTEGER REFERENCES places(place_id),
 
   origin_seq             INTEGER CHECK (origin_seq IS NULL OR origin_seq >= 1),
   destination_seq        INTEGER CHECK (destination_seq IS NULL OR destination_seq >= 1),
@@ -182,12 +183,10 @@ CREATE TABLE fare_rules (
   CHECK (
     route_id IS NOT NULL
     OR pattern_id IS NOT NULL
-    OR (origin_place_id IS NOT NULL AND destination_place_id IS NOT NULL)
   )
 );
 
 CREATE INDEX idx_fare_rules_route    ON fare_rules(route_id, pattern_id, is_active);
-CREATE INDEX idx_fare_rules_od       ON fare_rules(origin_place_id, destination_place_id, operator_id, mode);
 
 CREATE TABLE fare_amounts (
   fare_rule_id           INTEGER NOT NULL REFERENCES fare_rules(fare_rule_id) ON DELETE CASCADE,
@@ -215,7 +214,7 @@ CREATE TABLE headway_trips (
   upstream_route_id  INTEGER NOT NULL,
   route_seq          INTEGER,
   service_id         INTEGER NOT NULL REFERENCES service_calendars(service_id),
-  departure_time     TEXT,
+  departure_time     TEXT
 ) WITHOUT ROWID;
 
 CREATE INDEX idx_headway_trips_route_service
@@ -223,6 +222,7 @@ CREATE INDEX idx_headway_trips_route_service
 
 CREATE TABLE headway_frequencies (
   upstream_route_id  INTEGER NOT NULL,
+  -- TODO: This should correlate with route key
   route_seq          INTEGER,
   service_id         INTEGER NOT NULL REFERENCES service_calendars(service_id),
   start_time         TEXT NOT NULL,

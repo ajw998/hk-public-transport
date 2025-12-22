@@ -17,6 +17,6 @@ class CommitConfig:
     final_synchronous: SyncMode = "FULL"
     run_analyze: bool = True
     run_optimize: bool = True
-    run_vacuum: bool = False
+    run_vacuum: bool = True
     enforce_single_source_per_table: bool = True
     create_headway_debug_tables: bool = True
