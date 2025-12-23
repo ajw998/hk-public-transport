@@ -40,17 +40,6 @@ _FREQUENCIES_HINTS: dict[str, pa.DataType] = {
     "headway_secs": pa.int32(),
 }
 
-_STOP_TIMES_HINTS: dict[str, pa.DataType] = {
-    "trip_id": pa.string(),
-    "arrival_time": pa.string(),
-    "departure_time": pa.string(),
-    "stop_id": pa.int64(),
-    "stop_sequence": pa.int32(),
-    "pickup_type": pa.int32(),
-    "drop_off_type": pa.int32(),
-    "timepoint": pa.int32(),
-}
-
 GTFS_PLANS: dict[str, TxtTablePlan] = {
     "calendar": TxtTablePlan(
         table_name="td_headway_calendar",
@@ -84,27 +73,10 @@ GTFS_PLANS: dict[str, TxtTablePlan] = {
         stable_sort_keys=["trip_id", "start_time", "end_time"],
         known_first=["trip_id", "start_time", "end_time", "headway_secs"],
     ),
-    "stop_times": TxtTablePlan(
-        table_name="td_headway_stop_times",
-        required_fields={"trip_id", "stop_id", "stop_sequence"},
-        type_hints=_STOP_TIMES_HINTS,
-        stable_sort_keys=["trip_id", "stop_sequence", "stop_id"],
-        known_first=[
-            "trip_id",
-            "arrival_time",
-            "departure_time",
-            "stop_id",
-            "stop_sequence",
-            "pickup_type",
-            "drop_off_type",
-            "timepoint",
-        ],
-    ),
 }
 
 GTFS_FILES: dict[str, str] = {
     "CALENDAR.TXT": "calendar",
     "TRIPS.TXT": "trips",
     "FREQUENCIES.TXT": "frequencies",
-    "STOP_TIMES.TXT": "stop_times",
 }

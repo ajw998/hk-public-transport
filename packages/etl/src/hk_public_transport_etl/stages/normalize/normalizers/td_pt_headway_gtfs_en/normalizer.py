@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import polars as pl
-from hk_public_transport_etl.core import JsonObject, NormalizeError, stable_json_dumps
+from hk_public_transport_etl.core import JsonObject, NormalizeError
 
 from ...common import (
     NormalizeWriter,
@@ -36,7 +36,6 @@ def normalize_td_pt_headway_gtfs_en(ctx: NormalizeContext) -> NormalizeOutput:
     calendar = _must_df(table_paths, "td_headway_calendar")
     trips = _must_df(table_paths, "td_headway_trips")
     freqs = _must_df(table_paths, "td_headway_frequencies")
-    stop_times = _must_df(table_paths, "td_headway_stop_times")
 
     out_dir = data_root / "normalized" / source_id / version
     out = NormalizeWriter(out_dir=out_dir)
@@ -232,51 +231,6 @@ def normalize_td_pt_headway_gtfs_en(ctx: NormalizeContext) -> NormalizeOutput:
         df=stable_sort(freq_unresolved, ["trip_id"]),
     )
 
-    # headway_stop_times
-    require_columns(
-        stop_times,
-        table="td_headway_stop_times",
-        cols=["trip_id", "stop_id", "stop_sequence"],
-    )
-
-    st = stop_times.select(
-        pl.col("trip_id").cast(pl.Utf8),
-        pl.col("stop_sequence").cast(pl.Int64),
-        pl.col("stop_id").cast(pl.Int64),
-        pl.col("arrival_time").cast(pl.Utf8),
-        pl.col("departure_time").cast(pl.Utf8),
-        pl.col("pickup_type").cast(pl.Int64),
-        pl.col("drop_off_type").cast(pl.Int64),
-        pl.col("timepoint").cast(pl.Int64),
-    ).join(
-        headway_trips.select(["trip_id", "upstream_route_id"]),
-        on="trip_id",
-        how="left",
-    )
-
-    st_unresolved = st.filter(pl.col("upstream_route_id").is_null()).select(
-        [
-            pl.lit(source_id).alias("source"),
-            pl.col("trip_id"),
-            pl.col("stop_id"),
-            pl.col("stop_sequence"),
-            pl.lit("missing_trip", dtype=pl.Utf8).alias("reason"),
-        ]
-    )
-
-    headway_stop_times = st.filter(pl.col("upstream_route_id").is_not_null()).drop(
-        "upstream_route_id"
-    )
-    headway_stop_times = stable_sort(headway_stop_times, ["trip_id", "stop_sequence"])
-    out.write_parquet(
-        kind="canonical", name="headway_stop_times", df=headway_stop_times
-    )
-    out.write_parquet(
-        kind="unresolved",
-        name="stop_times_unresolved_trip",
-        df=stable_sort(st_unresolved, ["trip_id"]),
-    )
-
     # metadata
     warnings: list[JsonObject] = []
     if freq_unresolved.height > 0:
@@ -285,10 +239,6 @@ def normalize_td_pt_headway_gtfs_en(ctx: NormalizeContext) -> NormalizeOutput:
                 "type": "frequencies_unresolved_trip",
                 "count": int(freq_unresolved.height),
             }
-        )
-    if st_unresolved.height > 0:
-        warnings.append(
-            {"type": "stop_times_unresolved_trip", "count": int(st_unresolved.height)}
         )
 
     inputs: JsonObject = {}

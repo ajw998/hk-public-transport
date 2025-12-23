@@ -15,10 +15,10 @@ class HeadwayResolveStats:
     def to_dict(self) -> dict[str, object]:
         return {
             "inserted_rows": int(self.inserted_rows),
-            "unresolved_missing_pattern": self.unresolved_missing_pattern,
-            "unresolved_ambiguous_route": self.unresolved_ambiguous_route,
-            "unresolved_missing_route_seq": self.unresolved_missing_route_seq,
-            "unresolved_missing_pattern": self.unresolved_missing_pattern,
+            "unresolved_missing_route": int(self.unresolved_missing_route),
+            "unresolved_ambiguous_route": int(self.unresolved_ambiguous_route),
+            "unresolved_missing_route_seq": int(self.unresolved_missing_route_seq),
+            "unresolved_missing_pattern": int(self.unresolved_missing_pattern),
         }
 
 

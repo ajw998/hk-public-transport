@@ -216,21 +216,6 @@ CREATE TABLE headway_frequencies (
 CREATE INDEX idx_headway_freq_service
   ON headway_frequencies(service_id, upstream_route_id, route_seq);
 
-CREATE TABLE headway_stop_times (
-  trip_id           TEXT NOT NULL REFERENCES headway_trips(trip_id) ON DELETE CASCADE,
-  stop_sequence     INTEGER NOT NULL CHECK (stop_sequence >= 0),
-  stop_id           INTEGER NOT NULL, -- upstream stop_id
-  arrival_time      TEXT,
-  departure_time    TEXT,
-  pickup_type       INTEGER,
-  drop_off_type     INTEGER,
-  timepoint         INTEGER,
-  PRIMARY KEY (trip_id, stop_sequence)
-) WITHOUT ROWID;
-
-CREATE INDEX idx_headway_stop_times_stop
-  ON headway_stop_times(stop_id, departure_time);
-
 CREATE TABLE service_exceptions (
   service_id     INTEGER NOT NULL REFERENCES service_calendars(service_id) ON DELETE CASCADE,
   date           INTEGER NOT NULL,
