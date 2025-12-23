@@ -13,8 +13,7 @@ CREATE TABLE operators (
   operator_id            TEXT PRIMARY KEY, -- canonical enum-like string
   operator_name_en       TEXT NOT NULL,
   operator_name_tc       TEXT,
-  operator_name_sc       TEXT,
-  is_active              INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1))
+  operator_name_sc       TEXT
 ) WITHOUT ROWID;
 
 -- Places
@@ -52,18 +51,16 @@ CREATE TABLE places (
   hk80_y                 INTEGER,
 
   -- Parent/containment (reserved for stations [station complex > station > entrance] )
-  parent_place_id        INTEGER REFERENCES places(place_id),
-
-  is_active              INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1))
+  parent_place_id        INTEGER REFERENCES places(place_id)
 );
 
 CREATE INDEX idx_places_parent       ON places(parent_place_id);
-CREATE INDEX idx_places_type_mode    ON places(place_type, primary_mode, is_active);
+CREATE INDEX idx_places_type_mode    ON places(place_type, primary_mode);
 
 -- Routes
 CREATE TABLE routes (
   -- IMPORTANT: `route_id` is the internal id, not the upstream id. To perform upstream route_id correlation,
-  -- use the `route_key` instead.
+  -- use the `route_key` or `upstream_route_id` instead.
   route_id               INTEGER PRIMARY KEY,
   -- This is the canonical stable key.
   route_key              TEXT NOT NULL UNIQUE,
@@ -76,9 +73,6 @@ CREATE TABLE routes (
 
   -- Public-facing identifiers
   route_short_name       TEXT,
-  route_long_name_en     TEXT,
-  route_long_name_tc     TEXT,
-  route_long_name_sc     TEXT,
   origin_text_en         TEXT,
   origin_text_tc         TEXT,
   origin_text_sc         TEXT,
@@ -89,13 +83,11 @@ CREATE TABLE routes (
   -- Region/district code
   service_area_code      TEXT,
 
-  journey_time_minutes   INTEGER,
-
-  is_active              INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1))
+  journey_time_minutes   INTEGER
 );
 
 CREATE INDEX idx_routes_mode_op_short ON routes(mode, operator_id, route_short_name);
-CREATE INDEX idx_routes_operator_mode ON routes(operator_id, mode, is_active);
+CREATE INDEX idx_routes_operator_mode ON routes(operator_id, mode);
 CREATE INDEX idx_routes_mode_upstream ON routes(mode, upstream_route_id);
 
 -- Route patterns
@@ -123,12 +115,10 @@ CREATE TABLE route_patterns (
 
   -- Sequence quality flags (e.g., HKTD notes GMB may only have termini in RSTOP) 
   sequence_incomplete    INTEGER NOT NULL DEFAULT 0 CHECK (sequence_incomplete IN (0,1)),
-  is_circular            INTEGER NOT NULL DEFAULT 0 CHECK (is_circular IN (0,1)),
-
-  is_active              INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1))
+  is_circular            INTEGER NOT NULL DEFAULT 0 CHECK (is_circular IN (0,1))
 );
 
-CREATE INDEX idx_route_patterns_route_dir ON route_patterns(route_id, direction_id, service_type, is_active);
+CREATE INDEX idx_route_patterns_route_dir ON route_patterns(route_id, direction_id, service_type);
 
 -- Ordered stop sequence for each pattern
 CREATE TABLE pattern_stops (
@@ -154,9 +144,7 @@ CREATE INDEX idx_pattern_stops_pattern_seq ON pattern_stops(pattern_id, seq);
 CREATE TABLE fare_products (
   fare_product_id        INTEGER PRIMARY KEY,
   product_key            TEXT NOT NULL UNIQUE,
-  mode                   TEXT CHECK (mode IN ('bus','gmb','mtr','lightrail','mtr_bus','ferry','tram','peak_tram')),
-
-  is_active              INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1))
+  mode                   TEXT CHECK (mode IN ('bus','gmb','mtr','lightrail','mtr_bus','ferry','tram','peak_tram'))
 );
 
 -- Fare rules
@@ -172,9 +160,7 @@ CREATE TABLE fare_rules (
   pattern_id             INTEGER REFERENCES route_patterns(pattern_id),
 
   origin_seq             INTEGER CHECK (origin_seq IS NULL OR origin_seq >= 1),
-  destination_seq        INTEGER CHECK (destination_seq IS NULL OR destination_seq >= 1),
-
-  is_active              INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0,1))
+  destination_seq        INTEGER CHECK (destination_seq IS NULL OR destination_seq >= 1)
 
   CHECK (
     route_id IS NOT NULL
@@ -182,7 +168,7 @@ CREATE TABLE fare_rules (
   )
 );
 
-CREATE INDEX idx_fare_rules_route    ON fare_rules(route_id, pattern_id, is_active);
+CREATE INDEX idx_fare_rules_route    ON fare_rules(route_id, pattern_id);
 
 CREATE TABLE fare_amounts (
   fare_rule_id           INTEGER NOT NULL REFERENCES fare_rules(fare_rule_id) ON DELETE CASCADE,
@@ -218,7 +204,6 @@ CREATE INDEX idx_headway_trips_route_service
 
 CREATE TABLE headway_frequencies (
   upstream_route_id  INTEGER NOT NULL,
-  -- TODO: This should correlate with route key
   route_seq          INTEGER,
   service_id         INTEGER NOT NULL REFERENCES service_calendars(service_id),
   start_time         TEXT NOT NULL,

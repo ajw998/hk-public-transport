@@ -5,13 +5,11 @@ WITH bus_route AS (
   WHERE mode = 'bus'
     AND operator_id = 'operator:CTB'
     AND route_short_name = '{route_short_name}'
-    AND is_active = 1
 ),
 patterns AS (
   SELECT rp.pattern_id, rp.pattern_key, rp.route_id, rp.route_seq, rp.direction_id
   FROM route_patterns rp
   JOIN bus_route r ON r.route_id = rp.route_id
-  WHERE rp.is_active = 1
 )
 SELECT
   r.route_key,

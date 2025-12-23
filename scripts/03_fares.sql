@@ -7,7 +7,6 @@ WITH bus_route AS (
   WHERE mode = 'bus'
     AND operator_id = 'operator:CTB'
     AND route_short_name = '{route_short_name}'
-    AND is_active = 1
 )
 SELECT
   r.route_key,

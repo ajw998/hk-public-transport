@@ -149,7 +149,6 @@ def _normalize_operators(
             pl.col("COMPANY_NAMES")
             .map_elements(clean_name, return_dtype=pl.Utf8)
             .alias("operator_name_sc"),
-            pl.lit(1, dtype=pl.Int8).alias("is_active"),
         )
         .with_columns(
             pl.col("COMPANY_CODE")
@@ -165,7 +164,6 @@ def _normalize_operators(
                 "operator_name_en",
                 "operator_name_tc",
                 "operator_name_sc",
-                "is_active",
             ]
         )
     )
@@ -210,7 +208,6 @@ def _normalize_places_for_mode(
             pl.col("name_tc").alias("display_name_tc"),
             pl.col("name_sc").alias("display_name_sc"),
             pl.lit(None, dtype=pl.Int64).alias("parent_place_id"),
-            pl.lit(1, dtype=pl.Int8).alias("is_active"),
         )
     )
     places = add_lat_lon_from_hk80(places, x_col="hk80_x", y_col="hk80_y")
@@ -231,7 +228,6 @@ def _normalize_places_for_mode(
             "hk80_x",
             "hk80_y",
             "parent_place_id",
-            "is_active",
             "source_stop_id",
             "source_file",
             "source_row",
@@ -300,15 +296,6 @@ def _normalize_routes_for_mode(
             pl.col("ROUTE_NAMEE")
             .map_elements(clean_name, return_dtype=pl.Utf8)
             .alias("route_short_name"),
-            pl.col("ROUTE_NAMEE")
-            .map_elements(clean_name, return_dtype=pl.Utf8)
-            .alias("route_long_name_en"),
-            pl.col("ROUTE_NAMEC")
-            .map_elements(clean_name, return_dtype=pl.Utf8)
-            .alias("route_long_name_tc"),
-            pl.col("ROUTE_NAMES")
-            .map_elements(clean_name, return_dtype=pl.Utf8)
-            .alias("route_long_name_sc"),
             pl.col("LOC_START_NAMEE")
             .map_elements(clean_name, return_dtype=pl.Utf8)
             .alias("origin_text_en"),
@@ -353,7 +340,6 @@ def _normalize_routes_for_mode(
             )
             .alias("route_key"),
             pl.col("source_route_id").alias("upstream_route_id"),
-            pl.lit(1, dtype=pl.Int8).alias("is_active"),
         )
         .with_columns(
             pl.col("SPECIAL_TYPE").alias("_td_special_type"),
@@ -365,9 +351,6 @@ def _normalize_routes_for_mode(
                 "mode",
                 "operator_id",
                 "route_short_name",
-                "route_long_name_en",
-                "route_long_name_tc",
-                "route_long_name_sc",
                 "origin_text_en",
                 "origin_text_tc",
                 "origin_text_sc",
@@ -376,7 +359,6 @@ def _normalize_routes_for_mode(
                 "destination_text_sc",
                 "service_area_code",
                 "journey_time_minutes",
-                "is_active",
                 "_td_special_type",
                 "source_route_id",
                 "source_file",
@@ -504,7 +486,6 @@ def _derive_patterns_for_mode(
         [
             "route_key",
             "route_short_name",
-            "route_long_name_en",
             "origin_text_en",
             "origin_text_tc",
             "origin_text_sc",
@@ -565,7 +546,6 @@ def _derive_patterns_for_mode(
             )
             .otherwise(pl.lit(0, dtype=pl.Int8))
             .alias("is_circular"),
-            pl.lit(1, dtype=pl.Int8).alias("is_active"),
         )
         .select(
             [
@@ -579,7 +559,6 @@ def _derive_patterns_for_mode(
                 "service_type",
                 "sequence_incomplete",
                 "is_circular",
-                "is_active",
                 "source_file",
                 "source_row_min",
             ]
@@ -667,7 +646,6 @@ def _normalize_fares_for_mode(
         {
             "product_key": [product_key],
             "mode": [mode],
-            "is_active": [1],
         }
     )
 
@@ -753,7 +731,6 @@ def _normalize_fares_for_mode(
         )
         .alias("rule_key"),
         pl.lit(None, dtype=pl.Int64).alias("pattern_id"),
-        pl.lit(1, dtype=pl.Int8).alias("is_active"),
     ).select(
         [
             "rule_key",
@@ -763,7 +740,6 @@ def _normalize_fares_for_mode(
             "pattern_id",
             "origin_seq",
             "destination_seq",
-            "is_active",
             "price",
         ]
     )
@@ -1089,7 +1065,6 @@ def normalize_td_routes_fares_xml(ctx: NormalizeContext) -> NormalizeOutput:
                     "service_type",
                     "sequence_incomplete",
                     "is_circular",
-                    "is_active",
                 ]
             ),
             ["pattern_id"],
@@ -1143,7 +1118,6 @@ def normalize_td_routes_fares_xml(ctx: NormalizeContext) -> NormalizeOutput:
                         "route_key",
                         "origin_seq",
                         "destination_seq",
-                        "is_active",
                     ]
                 ),
                 ["mode", "route_key", "rule_key"],

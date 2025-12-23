@@ -99,7 +99,6 @@ def resolve_pattern_headways(
           COUNT(ps.seq) AS stop_count
         FROM route_patterns rp
         JOIN pattern_stops ps ON ps.pattern_id = rp.pattern_id
-        WHERE rp.is_active = 1
         GROUP BY rp.route_id, rp.route_seq, rp.pattern_id;
 
         -- Max stop_count per (route_id, route_seq)
