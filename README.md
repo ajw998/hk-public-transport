@@ -6,6 +6,8 @@ This monorepo ingests Hong Kong transport open data from the HKSAR Government Da
 
 ## Design Notes
 We distinguish between a full, canonical artefact, and a purpose-built bundle for applications.
+- `transport.sqlite`: Canonical truth model used by the pipeline for validation and downstream data science style queries
+- `app.sqlite`: Serving model built from canonical, compact and indexed for fast in-app browsing and search
 
 ## Running the pipeline
 Prerequisites:
@@ -33,6 +35,12 @@ Outputs are placed under `data/` (override via `HK_PUBLIC_TRANSPORT_DATA_ROOT`).
 - `make format`: Run formatter
 
 - `make format-check`:  Check formats
+
+- `make smoke_check`: Run golden smoke checks against the latest published `app.sqlite`
+
+- `make search_prefix Q=9`: Route-number prefix search (available filters: `MODE_ID=...`, `OPERATOR_ID=...`)
+
+- `make search_fts Q='central*'`: Full-text search across route endpoints and stop names
 
 ## Architecture
 ```mermaid

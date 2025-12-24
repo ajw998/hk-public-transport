@@ -95,3 +95,31 @@ CREATE TABLE fare_segments (
   CHECK (dest_to_seq >= dest_from_seq),
   PRIMARY KEY (route_id, fare_product_id, origin_seq, dest_from_seq)
 ) WITHOUT ROWID;
+
+-- Contentless FTS index for app search.
+-- unicode61 does not segment Chinese. 
+-- We pre-segment TC/SC into space-separated characters
+-- to allow short queries like "機場".
+CREATE TABLE search_docs (
+  doc_id      INTEGER PRIMARY KEY,
+  kind        TEXT    NOT NULL CHECK (kind IN ('p','r')),
+  ref_id      INTEGER NOT NULL,
+  mode_id     INTEGER NOT NULL,
+  operator_id INTEGER,
+  code        TEXT    NOT NULL
+) WITHOUT ROWID;
+
+CREATE INDEX idx_search_docs_kind_ref ON search_docs(kind, ref_id);
+
+CREATE VIRTUAL TABLE search_fts USING fts5(
+  kind        UNINDEXED,   -- 'p' (places) or 'r' (routes)
+  ref_id      UNINDEXED,
+  mode_id     UNINDEXED,
+  operator_id UNINDEXED, 
+  code,
+  en,
+  tc,
+  sc,
+  tokenize = "unicode61 remove_diacritics 2",
+  content=''
+);

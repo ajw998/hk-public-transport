@@ -17,7 +17,7 @@ class PublishConfig:
 
     signing_private_key_path: str | None = None
 
-    etl_version: str = "0.0.0"
+    etl_version: str = "1.0.0"
     git_commit: str = "unknown"
     deterministic: bool = True
 

@@ -25,7 +25,6 @@ def run_validate_source(
     v_spec = spec_for_source(spec.id)
 
     layout = DataLayout(root=Path(data_root))
-    layout.ensure_dirs(spec.id, version)
 
     tables_dir = layout.normalized_tables(spec.id, version)
     mappings_dir = layout.normalized_mappings(spec.id, version)

@@ -74,7 +74,7 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 
 def _finalize_sqlite_in_place(
-    db_path: Path, cfg: PublishConfig, *, optimize: bool
+    db_path: Path, _: PublishConfig, *, optimize: bool
 ) -> None:
     """
     Ensure the DB is single-file (no WAL/shm) and consistent.
@@ -122,7 +122,7 @@ def run_publish_bundle(
     _require_file(app_db_path, label="app.sqlite")
     _require_file(transport_db_path, label="transport.sqlite")
 
-    # Discover sources (prefer build_metadata if it lists them)
+    # Discover sources
     source_ids: list[str] = []
     if build_meta_path.exists():
         bm = _load_json(build_meta_path)
@@ -216,10 +216,10 @@ def run_publish_bundle(
         if isinstance(bm.get("deterministic"), bool):
             build["deterministic"] = bm["deterministic"]
 
-    # Stats from SQLite (contract optional object)
+    # Stats from SQLite
     stats = _query_stats(tmp_dir / "app.sqlite")
 
-    # Create manifest *after* all files exist (we’ll fill files list later)
+    # Create manifest *after* all files exist
     # First write a placeholder; then compute file list and write final manifest.
     manifest_path = tmp_dir / "manifest.json"
 
@@ -234,7 +234,6 @@ def run_publish_bundle(
         signing_pub_b64 = public_key_b64_from_private_key(private_key_path=priv_path)
 
     # Build manifest now with current bundle files (sans manifest itself first)
-    # We’ll re-list after writing manifest.
     manifest = build_manifest(
         bundle_id=bundle_id,
         bundle_version=version,
@@ -270,7 +269,6 @@ def run_publish_bundle(
     if schema_path is not None and schema_path.exists():
         validate_manifest_against_jsonschema(manifest=manifest, schema_path=schema_path)
 
-    # Optional signatures
     sha_entries: dict[str, str] = {}
     sha_entries["manifest.json"] = sha256_file(manifest_path).sha256
     sha_entries["app.sqlite"] = sha256_file(tmp_dir / "app.sqlite").sha256

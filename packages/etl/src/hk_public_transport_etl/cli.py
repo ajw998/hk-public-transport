@@ -127,7 +127,7 @@ def _normalize_stage_fn(fn: Callable[[Any], object]) -> StageFn:
 
 def _with_status(stage_id: str, fn: StageFn) -> StageFn:
     def _run_with_status(ctx):
-        with console.status(f"[bold]{stage_id.capitalize}[/] ", spinner="dots"):
+        with console.status(f"[bold]{stage_id.capitalize()}[/] ", spinner="dots"):
             return fn(ctx)
 
     return _run_with_status

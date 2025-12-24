@@ -5,6 +5,7 @@ dist/
 wheels/
 *.egg-info
 .venv
+.uv-cache/
 data/
 _runs/
 todo.md

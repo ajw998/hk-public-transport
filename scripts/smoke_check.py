@@ -7,10 +7,19 @@ import duckdb
 import polars as pl
 
 
+def _run_query_duckdb(con: duckdb.DuckDBPyConnection, *, sql: str) -> pl.DataFrame:
+    return con.execute(sql).pl()
+
+
 def run_query(
-    con: duckdb.DuckDBPyConnection, sql_path: Path, route_short_name: str
+    con: duckdb.DuckDBPyConnection,
+    sql_path: Path,
+    *,
+    route_short_name: str,
+    existing_tables: set[str],
 ) -> None:
     sql = sql_path.read_text("utf-8").replace("{route_short_name}", route_short_name)
+
     headway_tables = {
         "headway_trips",
         "headway_stop_times",
@@ -20,19 +29,13 @@ def run_query(
         "service_exceptions",
     }
     if any(t in sql for t in headway_tables):
-        existing = {
-            row[0]
-            for row in con.execute(
-                "SELECT name FROM sqlite_master WHERE type='table';"
-            ).fetchall()
-        }
-        missing = [t for t in headway_tables if t in sql and t not in existing]
+        missing = [t for t in headway_tables if t in sql and t not in existing_tables]
         if missing:
             raise SystemExit(
                 f"Headway tables missing ({', '.join(missing)}); rerun pipeline with --headway full."
             )
     print(f"\n-- {sql_path.name} --")
-    df = con.execute(sql).pl()
+    df = _run_query_duckdb(con, sql=sql)
     with pl.Config(
         tbl_rows=500, tbl_cols=100, tbl_width_chars=2000, fmt_str_lengths=200
     ):
@@ -40,9 +43,6 @@ def run_query(
 
 
 def _discover_db(published_root: Path) -> Path:
-    """
-    Find the newest app.sqlite under published/{bundle_id}/{version}/.
-    """
     if not published_root.exists():
         raise FileNotFoundError(f"Published root not found: {published_root}")
 
@@ -77,6 +77,13 @@ def main() -> int:
     con.execute(f"ATTACH '{db_path.as_posix()}' AS db (TYPE SQLITE);")
     con.execute("SET search_path = db.main;")
 
+    existing_tables = {
+        row[0]
+        for row in con.execute(
+            "SELECT name FROM sqlite_master WHERE type='table';"
+        ).fetchall()
+    }
+
     # Bundle metadata summary
     meta_df = con.execute("SELECT * FROM meta").pl()
     db_size_bytes = db_path.stat().st_size
@@ -85,12 +92,20 @@ def main() -> int:
         print(meta_df)
     print(f"DB size: {db_size_bytes} bytes ({db_size_bytes/1024/1024:.2f} MB)")
 
-    for sql_path in sorted(scripts_dir.glob("*.sql")):
+    for sql_path in sorted(scripts_dir.glob("[0-9][0-9]_*.sql")):
         if sql_path.is_file():
-            run_query(con, sql_path, args.route)
+            run_query(
+                con,
+                sql_path,
+                route_short_name=args.route,
+                existing_tables=existing_tables,
+            )
 
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except BrokenPipeError:
+        raise SystemExit(0)

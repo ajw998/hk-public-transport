@@ -6,42 +6,15 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import polars as pl
-from hk_public_transport_etl.core import atomic_replace
+from hk_public_transport_etl.core import (
+    MODE_ID,
+    PLACE_TYPE_ID,
+    SERVICE_TYPE_ID,
+    atomic_replace,
+)
 
 from .ddl import load_app_ddl
-
-MODE_ID = {
-    "bus": 1,
-    "gmb": 2,
-    "mtr": 3,
-    "lightrail": 4,
-    "mtr_bus": 5,
-    "ferry": 6,
-    "tram": 7,
-    "peak_tram": 8,
-    "unknown": 0,
-}
-
-PLACE_TYPE_ID = {
-    "stop": 1,
-    "station": 2,
-    "station_complex": 3,
-    "pier": 4,
-    "platform": 5,
-    "entrance_exit": 6,
-    "interchange": 7,
-    "other": 8,
-}
-
-SERVICE_TYPE_ID = {
-    "regular": 1,
-    "night": 2,
-    "express": 3,
-    "holiday": 4,
-    "limited": 5,
-    "special": 6,
-    "unknown": 0,
-}
+from .text import normalize_en, segment_cjk
 
 
 def _case(expr: str, mapping: dict[str, int], *, default: int = 0) -> str:
@@ -136,6 +109,343 @@ def _build_fare_segments(df: pl.DataFrame) -> pl.DataFrame:
     return segments
 
 
+def _populate_operators(app: sqlite3.Connection) -> None:
+    operator_rows = _query_operator_rows(app, canon_schema="canon")
+    app.execute("BEGIN;")
+    try:
+        app.execute(
+            "CREATE TEMP TABLE operator_map(operator_id TEXT PRIMARY KEY, operator_pk INTEGER NOT NULL);"
+        )
+        op_map_rows: list[tuple[str, int]] = []
+        ops_insert = []
+        for i, (operator_id, operator_code, en, tc, sc) in enumerate(
+            operator_rows, start=1
+        ):
+            ops_insert.append((i, operator_code, en, tc, sc))
+            op_map_rows.append((operator_id, i))
+
+        _insert_many(
+            app,
+            "INSERT INTO operators(operator_id, operator_code, operator_name_en, operator_name_tc, operator_name_sc) "
+            "VALUES (?,?,?,?,?);",
+            ops_insert,
+        )
+        _insert_many(
+            app,
+            "INSERT INTO operator_map(operator_id, operator_pk) VALUES (?,?);",
+            op_map_rows,
+        )
+        app.execute("COMMIT;")
+    except Exception:
+        app.execute("ROLLBACK;")
+        raise
+
+
+def _copy_places(app: sqlite3.Connection) -> None:
+    place_type_case = _case("c.place_type", PLACE_TYPE_ID, default=0)
+    primary_mode_case = _case("c.primary_mode", MODE_ID, default=0)
+    app.execute(
+        f"""
+        INSERT INTO places(
+          place_id, place_type_id, primary_mode_id,
+          name_en, name_tc, name_sc,
+          lat_e7, lon_e7,
+          parent_place_id
+        )
+        SELECT
+          c.place_id,
+          {place_type_case} AS place_type_id,
+          {primary_mode_case} AS primary_mode_id,
+          c.name_en, c.name_tc, c.name_sc,
+          CASE WHEN c.lat IS NULL THEN NULL ELSE CAST(ROUND(c.lat * 10000000.0) AS INTEGER) END AS lat_e7,
+          CASE WHEN c.lon IS NULL THEN NULL ELSE CAST(ROUND(c.lon * 10000000.0) AS INTEGER) END AS lon_e7,
+          c.parent_place_id
+        FROM canon.places c
+        ORDER BY c.place_id;
+        """
+    )
+
+
+def _copy_routes(app: sqlite3.Connection) -> None:
+    mode_case_routes = _case("r.mode", MODE_ID, default=0)
+    app.execute(
+        f"""
+        INSERT INTO routes(
+          route_id, operator_id, mode_id,
+          route_short_name,
+          origin_text_en, origin_text_tc, origin_text_sc,
+          destination_text_en, destination_text_tc, destination_text_sc,
+          journey_time_minutes,
+          upstream_route_id
+        )
+        SELECT
+          r.route_id,
+          om.operator_pk,
+          {mode_case_routes} AS mode_id,
+          r.route_short_name,
+          r.origin_text_en, r.origin_text_tc, r.origin_text_sc,
+          r.destination_text_en, r.destination_text_tc, r.destination_text_sc,
+          r.journey_time_minutes,
+          r.upstream_route_id
+        FROM canon.routes r
+        JOIN operator_map om ON om.operator_id = r.operator_id
+        ORDER BY r.route_id;
+        """
+    )
+
+
+def _copy_route_patterns(app: sqlite3.Connection) -> None:
+    service_type_case = _case("p.service_type", SERVICE_TYPE_ID, default=0)
+    app.execute(
+        f"""
+        INSERT INTO route_patterns(
+          pattern_id, route_id, route_seq, direction_id, service_type_id,
+          sequence_incomplete, is_circular
+        )
+        SELECT
+          p.pattern_id,
+          p.route_id,
+          p.route_seq,
+          p.direction_id,
+          {service_type_case} AS service_type_id,
+          p.sequence_incomplete,
+          p.is_circular
+        FROM canon.route_patterns p
+        ORDER BY p.pattern_id;
+        """
+    )
+
+
+def _copy_pattern_stops(app: sqlite3.Connection) -> None:
+    app.execute(
+        """
+        INSERT INTO pattern_stops(pattern_id, seq, place_id, allow_repeat)
+        SELECT pattern_id, seq, place_id, allow_repeat
+        FROM canon.pattern_stops
+        ORDER BY pattern_id, seq;
+        """
+    )
+
+
+def _copy_fare_products(app: sqlite3.Connection) -> None:
+    if not _table_exists(app, "fare_products", schema="canon"):
+        return
+    mode_case_fare_products = _case("fp.mode", MODE_ID, default=0)
+    app.execute(
+        f"""
+        INSERT INTO fare_products(fare_product_id, mode_id)
+        SELECT fp.fare_product_id, {mode_case_fare_products} AS mode_id
+        FROM canon.fare_products fp
+        ORDER BY fp.fare_product_id;
+        """
+    )
+
+
+def _copy_fare_segments(app: sqlite3.Connection) -> None:
+    if not (
+        _table_exists(app, "fare_rules", schema="canon")
+        and _table_exists(app, "fare_amounts", schema="canon")
+    ):
+        return
+
+    q = """
+    WITH choice AS (
+      SELECT
+        fare_rule_id,
+        COALESCE(
+          MIN(CASE WHEN is_default = 1 THEN fare_product_id END),
+          MIN(fare_product_id)
+        ) AS fare_product_id
+      FROM canon.fare_amounts
+      GROUP BY fare_rule_id
+    ),
+    chosen AS (
+      SELECT fa.fare_rule_id, c.fare_product_id, fa.amount_cents
+      FROM choice c
+      JOIN canon.fare_amounts fa
+        ON fa.fare_rule_id = c.fare_rule_id
+       AND fa.fare_product_id = c.fare_product_id
+    )
+    SELECT
+      fr.route_id,
+      chosen.fare_product_id,
+      fr.origin_seq,
+      fr.destination_seq,
+      chosen.amount_cents
+    FROM canon.fare_rules fr
+    JOIN chosen ON chosen.fare_rule_id = fr.fare_rule_id
+    WHERE fr.origin_seq IS NOT NULL AND fr.destination_seq IS NOT NULL
+    ORDER BY fr.route_id, chosen.fare_product_id, fr.origin_seq, fr.destination_seq;
+    """
+    cur = app.execute(q)
+    chunks: list[pl.DataFrame] = []
+    schema = [
+        ("route_id", pl.Int64),
+        ("fare_product_id", pl.Int64),
+        ("origin_seq", pl.Int64),
+        ("destination_seq", pl.Int64),
+        ("amount_cents", pl.Int64),
+    ]
+    while True:
+        rows = cur.fetchmany(200_000)
+        if not rows:
+            break
+        chunks.append(pl.DataFrame(rows, schema=schema, orient="row"))
+    df = pl.concat(chunks, how="vertical") if chunks else pl.DataFrame(schema=schema)
+    df = (
+        df.group_by(["route_id", "fare_product_id", "origin_seq", "destination_seq"])
+        .agg(pl.col("amount_cents").min().alias("amount_cents"))
+        .sort(["route_id", "fare_product_id", "origin_seq", "destination_seq"])
+    )
+    segments = _build_fare_segments(df)
+    seg_rows = segments.select(
+        [
+            "route_id",
+            "fare_product_id",
+            "origin_seq",
+            "dest_from_seq",
+            "dest_to_seq",
+            "amount_cents",
+            "is_default",
+        ]
+    ).iter_rows()
+
+    app.execute("BEGIN;")
+    try:
+        _insert_many(
+            app,
+            "INSERT INTO fare_segments(route_id, fare_product_id, origin_seq, dest_from_seq, dest_to_seq, amount_cents, is_default) "
+            "VALUES (?,?,?,?,?,?,?);",
+            seg_rows,
+        )
+        app.execute("COMMIT;")
+    except Exception:
+        app.execute("ROLLBACK;")
+        raise
+
+
+def _populate_search(app: sqlite3.Connection) -> None:
+    if not (_table_exists(app, "search_fts") and _table_exists(app, "search_docs")):
+        return
+
+    app.execute("BEGIN;")
+    try:
+        doc_buf: list[tuple[Any, ...]] = []
+        fts_buf: list[tuple[Any, ...]] = []
+        doc_id = 0
+
+        def flush() -> None:
+            nonlocal doc_buf, fts_buf
+            if not doc_buf:
+                return
+            app.executemany(
+                "INSERT INTO search_docs(doc_id, kind, ref_id, mode_id, operator_id, code) "
+                "VALUES (?,?,?,?,?,?);",
+                doc_buf,
+            )
+            app.executemany(
+                "INSERT INTO search_fts(rowid, kind, ref_id, mode_id, operator_id, code, en, tc, sc) "
+                "VALUES (?,?,?,?,?,?,?,?,?);",
+                fts_buf,
+            )
+            doc_buf = []
+            fts_buf = []
+
+        cur = app.execute(
+            "SELECT place_id, primary_mode_id, name_en, name_tc, name_sc "
+            "FROM places ORDER BY place_id;"
+        )
+        while True:
+            rows = cur.fetchmany(50_000)
+            if not rows:
+                break
+            for place_id, mode_id, name_en, name_tc, name_sc in rows:
+                doc_id += 1
+                doc_buf.append(
+                    (int(doc_id), "p", int(place_id), int(mode_id), None, "")
+                )
+                fts_buf.append(
+                    (
+                        int(doc_id),
+                        "p",
+                        int(place_id),
+                        int(mode_id),
+                        None,
+                        "",
+                        normalize_en(name_en),
+                        segment_cjk(name_tc),
+                        segment_cjk(name_sc),
+                    )
+                )
+            if len(doc_buf) >= 50_000:
+                flush()
+
+        cur = app.execute(
+            "SELECT route_id, mode_id, operator_id, route_short_name, "
+            "origin_text_en, destination_text_en, "
+            "origin_text_tc, destination_text_tc, "
+            "origin_text_sc, destination_text_sc "
+            "FROM routes ORDER BY route_id;"
+        )
+        while True:
+            rows = cur.fetchmany(50_000)
+            if not rows:
+                break
+            for (
+                route_id,
+                mode_id,
+                operator_id,
+                route_short_name,
+                origin_en,
+                dest_en,
+                origin_tc,
+                dest_tc,
+                origin_sc,
+                dest_sc,
+            ) in rows:
+                doc_id += 1
+                code = route_short_name or ""
+                doc_buf.append(
+                    (
+                        int(doc_id),
+                        "r",
+                        int(route_id),
+                        int(mode_id),
+                        int(operator_id),
+                        code,
+                    )
+                )
+                fts_buf.append(
+                    (
+                        int(doc_id),
+                        "r",
+                        int(route_id),
+                        int(mode_id),
+                        int(operator_id),
+                        code,
+                        normalize_en(
+                            " ".join(
+                                [str(code), str(origin_en or ""), str(dest_en or "")]
+                            )
+                        ),
+                        segment_cjk(
+                            " ".join([str(origin_tc or ""), str(dest_tc or "")])
+                        ),
+                        segment_cjk(
+                            " ".join([str(origin_sc or ""), str(dest_sc or "")])
+                        ),
+                    )
+                )
+            if len(doc_buf) >= 50_000:
+                flush()
+
+        flush()
+        app.execute("COMMIT;")
+    except Exception:
+        app.execute("ROLLBACK;")
+        raise
+
+
 def run_build_app_sqlite(
     *,
     canonical_sqlite_path: Path,
@@ -171,223 +481,20 @@ def run_build_app_sqlite(
         app.execute("ATTACH DATABASE ? AS canon;", (canonical_sqlite_path.as_posix(),))
 
         try:
-            # operators: deterministic operator_pk assignment by operator_id sort
-            operator_rows = _query_operator_rows(app, canon_schema="canon")
-            app.execute("BEGIN;")
-            try:
-                app.execute(
-                    "CREATE TEMP TABLE operator_map(operator_id TEXT PRIMARY KEY, operator_pk INTEGER NOT NULL);"
-                )
-                op_map_rows: list[tuple[str, int]] = []
-                ops_insert = []
-                for i, (operator_id, operator_code, en, tc, sc) in enumerate(
-                    operator_rows, start=1
-                ):
-                    ops_insert.append((i, operator_code, en, tc, sc))
-                    op_map_rows.append((operator_id, i))
-
-                _insert_many(
-                    app,
-                    "INSERT INTO operators(operator_id, operator_code, operator_name_en, operator_name_tc, operator_name_sc) "
-                    "VALUES (?,?,?,?,?);",
-                    ops_insert,
-                )
-                _insert_many(
-                    app,
-                    "INSERT INTO operator_map(operator_id, operator_pk) VALUES (?,?);",
-                    op_map_rows,
-                )
-                app.execute("COMMIT;")
-            except Exception:
-                app.execute("ROLLBACK;")
-                raise
-
-            place_type_case = _case("c.place_type", PLACE_TYPE_ID, default=0)
-            primary_mode_case = _case("c.primary_mode", MODE_ID, default=0)
-            mode_case_routes = _case("r.mode", MODE_ID, default=0)
-            mode_case_fare_products = _case("fp.mode", MODE_ID, default=0)
-            service_type_case = _case("p.service_type", SERVICE_TYPE_ID, default=0)
-
-            # places
-            app.execute(
-                f"""
-                INSERT INTO places(
-                  place_id, place_type_id, primary_mode_id,
-                  name_en, name_tc, name_sc,
-                  lat_e7, lon_e7,
-                  parent_place_id
-                )
-                SELECT
-                  c.place_id,
-                  {place_type_case} AS place_type_id,
-                  {primary_mode_case} AS primary_mode_id,
-                  c.name_en, c.name_tc, c.name_sc,
-                  CASE WHEN c.lat IS NULL THEN NULL ELSE CAST(ROUND(c.lat * 10000000.0) AS INTEGER) END AS lat_e7,
-                  CASE WHEN c.lon IS NULL THEN NULL ELSE CAST(ROUND(c.lon * 10000000.0) AS INTEGER) END AS lon_e7,
-                  c.parent_place_id
-                FROM canon.places c
-                ORDER BY c.place_id;
-                """
-            )
-
-            # routes
-            app.execute(
-                f"""
-                INSERT INTO routes(
-                  route_id, operator_id, mode_id,
-                  route_short_name,
-                  origin_text_en, origin_text_tc, origin_text_sc,
-                  destination_text_en, destination_text_tc, destination_text_sc,
-                  journey_time_minutes,
-                  upstream_route_id
-                )
-                SELECT
-                  r.route_id,
-                  om.operator_pk,
-                  {mode_case_routes} AS mode_id,
-                  r.route_short_name,
-                  r.origin_text_en, r.origin_text_tc, r.origin_text_sc,
-                  r.destination_text_en, r.destination_text_tc, r.destination_text_sc,
-                  r.journey_time_minutes,
-                  r.upstream_route_id
-                FROM canon.routes r
-                JOIN operator_map om ON om.operator_id = r.operator_id
-                ORDER BY r.route_id;
-                """
-            )
-
-            # route_patterns
-            app.execute(
-                f"""
-                INSERT INTO route_patterns(
-                  pattern_id, route_id, route_seq, direction_id, service_type_id,
-                  sequence_incomplete, is_circular
-                )
-                SELECT
-                  p.pattern_id,
-                  p.route_id,
-                  p.route_seq,
-                  p.direction_id,
-                  {service_type_case} AS service_type_id,
-                  p.sequence_incomplete,
-                  p.is_circular
-                FROM canon.route_patterns p
-                ORDER BY p.pattern_id;
-                """
-            )
-
-            # pattern_stops
-            app.execute(
-                """
-                INSERT INTO pattern_stops(pattern_id, seq, place_id, allow_repeat)
-                SELECT pattern_id, seq, place_id, allow_repeat
-                FROM canon.pattern_stops
-                ORDER BY pattern_id, seq;
-                """
-            )
-
-            # fare_products (small; keep IDs)
-            if _table_exists(app, "fare_products", schema="canon"):
-                app.execute(
-                    f"""
-                    INSERT INTO fare_products(fare_product_id, mode_id)
-                    SELECT fp.fare_product_id, {mode_case_fare_products} AS mode_id
-                    FROM canon.fare_products fp
-                    ORDER BY fp.fare_product_id;
-                    """
-                )
-
-            # fares: fetch canonical OD pairs with chosen default product per fare_rule_id
-            if _table_exists(app, "fare_rules", schema="canon") and _table_exists(
-                app, "fare_amounts", schema="canon"
-            ):
-                q = """
-                WITH choice AS (
-                  SELECT
-                    fare_rule_id,
-                    COALESCE(
-                      MIN(CASE WHEN is_default = 1 THEN fare_product_id END),
-                      MIN(fare_product_id)
-                    ) AS fare_product_id
-                  FROM canon.fare_amounts
-                  GROUP BY fare_rule_id
-                ),
-                chosen AS (
-                  SELECT fa.fare_rule_id, c.fare_product_id, fa.amount_cents
-                  FROM choice c
-                  JOIN canon.fare_amounts fa
-                    ON fa.fare_rule_id = c.fare_rule_id
-                   AND fa.fare_product_id = c.fare_product_id
-                )
-                SELECT
-                  fr.route_id,
-                  chosen.fare_product_id,
-                  fr.origin_seq,
-                  fr.destination_seq,
-                  chosen.amount_cents
-                FROM canon.fare_rules fr
-                JOIN chosen ON chosen.fare_rule_id = fr.fare_rule_id
-                WHERE fr.origin_seq IS NOT NULL AND fr.destination_seq IS NOT NULL
-                ORDER BY fr.route_id, chosen.fare_product_id, fr.origin_seq, fr.destination_seq;
-                """
-                cur = app.execute(q)
-                chunks: list[pl.DataFrame] = []
-                schema = [
-                    ("route_id", pl.Int64),
-                    ("fare_product_id", pl.Int64),
-                    ("origin_seq", pl.Int64),
-                    ("destination_seq", pl.Int64),
-                    ("amount_cents", pl.Int64),
-                ]
-                while True:
-                    rows = cur.fetchmany(200_000)
-                    if not rows:
-                        break
-                    chunks.append(pl.DataFrame(rows, schema=schema))
-                df = (
-                    pl.concat(chunks, how="vertical")
-                    if chunks
-                    else pl.DataFrame(schema=schema)
-                )
-                # Deterministic de-duplication: multiple canonical rows may exist for the same OD key.
-                df = (
-                    df.group_by(
-                        ["route_id", "fare_product_id", "origin_seq", "destination_seq"]
-                    )
-                    .agg(pl.col("amount_cents").min().alias("amount_cents"))
-                    .sort(
-                        ["route_id", "fare_product_id", "origin_seq", "destination_seq"]
-                    )
-                )
-                segments = _build_fare_segments(df)
-                seg_rows = segments.select(
-                    [
-                        "route_id",
-                        "fare_product_id",
-                        "origin_seq",
-                        "dest_from_seq",
-                        "dest_to_seq",
-                        "amount_cents",
-                        "is_default",
-                    ]
-                ).iter_rows()
-                app.execute("BEGIN;")
-                try:
-                    _insert_many(
-                        app,
-                        "INSERT INTO fare_segments(route_id, fare_product_id, origin_seq, dest_from_seq, dest_to_seq, amount_cents, is_default) "
-                        "VALUES (?,?,?,?,?,?,?);",
-                        seg_rows,
-                    )
-                    app.execute("COMMIT;")
-                except Exception:
-                    app.execute("ROLLBACK;")
-                    raise
+            _populate_operators(app)
+            _copy_places(app)
+            _copy_routes(app)
+            _copy_route_patterns(app)
+            _copy_pattern_stops(app)
+            _copy_fare_products(app)
+            _copy_fare_segments(app)
         finally:
             try:
                 app.execute("DETACH DATABASE canon;")
             except Exception:
                 pass
+
+        _populate_search(app)
 
         # meta row
         now = app.execute("SELECT STRFTIME('%Y-%m-%dT%H:%M:%fZ','now');").fetchone()[0]
