@@ -41,22 +41,22 @@ def run_query(
 
 def _discover_db(published_root: Path) -> Path:
     """
-    Find the newest transport.sqlite under published/{bundle_id}/{version}/.
+    Find the newest app.sqlite under published/{bundle_id}/{version}/.
     """
     if not published_root.exists():
         raise FileNotFoundError(f"Published root not found: {published_root}")
 
     candidates = sorted(
-        published_root.glob("**/transport.sqlite"), key=lambda p: p.stat().st_mtime
+        published_root.glob("**/app.sqlite"), key=lambda p: p.stat().st_mtime
     )
     if not candidates:
-        raise FileNotFoundError(f"No transport.sqlite found under {published_root}")
+        raise FileNotFoundError(f"No app.sqlite found under {published_root}")
     return candidates[-1]
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run golden tests against the published transport.sqlite."
+        description="Run golden tests against the published app.sqlite."
     )
     parser.add_argument(
         "--route",

@@ -4,6 +4,9 @@
 
 This monorepo ingests Hong Kong transport open data from the HKSAR Government Data Portal ([data.gov.hk](https://data.gov.hk/en/)), normalizes it into a canonical schema, and publishes versioned SQLite artefact for downstream consumption.
 
+## Design Notes
+We distinguish between a full, canonical artefact, and a purpose-built bundle for applications.
+
 ## Running the pipeline
 Prerequisites:
 - Python 3.12+
@@ -13,8 +16,9 @@ Prerequisites:
 # Execute full pipeline
 uv run python -m hk_public_transport_etl.cli run
 
-# You can also run specific pipeline stages (fetch, parse, normalize, validate, commit, publish)
+# You can also run specific pipeline stages (fetch, parse, normalize, validate, commit, serve, publish)
 uv run python -m hk_public_transport_etl.cli normalize
+uv run python -m hk_public_transport_etl.cli serve
 
 # Control headway inclusion
 # Full (default): all headway tables
@@ -47,10 +51,13 @@ flowchart TD
   SQLite bundle`"]
   Publish["`**Publish** 
   Manifest and checksums and optimized SQLite`"]
+  Serve["`**Serve**
+  app.sqlite serving bundle`"]
 
   Contracts --> Normalize
   Contracts --> Validate
-  Fetch --> Parse --> Normalize --> Validate --> Commit --> Publish
+
+  Fetch --> Parse --> Normalize --> Validate --> Commit --> Serve --> Publish
 ```
 
 ## License

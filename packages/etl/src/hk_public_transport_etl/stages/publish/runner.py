@@ -73,7 +73,9 @@ def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _finalize_sqlite_in_place(db_path: Path, cfg: PublishConfig) -> None:
+def _finalize_sqlite_in_place(
+    db_path: Path, cfg: PublishConfig, *, optimize: bool
+) -> None:
     """
     Ensure the DB is single-file (no WAL/shm) and consistent.
     Runs on the TEMP copy inside the publish temp directory.
@@ -85,11 +87,9 @@ def _finalize_sqlite_in_place(db_path: Path, cfg: PublishConfig) -> None:
         conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
         conn.execute("PRAGMA journal_mode = DELETE;")
         conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
-        if cfg.run_analyze:
+        if optimize:
             conn.execute("ANALYZE;")
-        if cfg.run_vacuum:
             conn.execute("VACUUM;")
-        if cfg.run_optimize:
             conn.execute("PRAGMA optimize;")
         conn.commit()
     finally:
@@ -115,11 +115,12 @@ def run_publish_bundle(
     bundle_id = cfg.bundle_id
 
     # Inputs
-    out_root = layout.out(bundle_id, version)
-    db_path = layout.transport_sqlite(bundle_id, version)
+    app_db_path = layout.app_sqlite(bundle_id, version)
+    transport_db_path = layout.transport_sqlite(bundle_id, version)
     build_meta_path = layout.out(bundle_id, version) / "build_metadata.json"
 
-    _require_file(db_path, label="transport.sqlite")
+    _require_file(app_db_path, label="app.sqlite")
+    _require_file(transport_db_path, label="transport.sqlite")
 
     # Discover sources (prefer build_metadata if it lists them)
     source_ids: list[str] = []
@@ -132,7 +133,6 @@ def run_publish_bundle(
                 break
 
     if not source_ids:
-        # fallback: registry (minus delta)
         cfg_dir = resolve_config_dir(config_dir)
         reg = get_source_registry(cfg_dir)
         source_ids = sorted(
@@ -175,22 +175,23 @@ def run_publish_bundle(
     tmp_dir = atomic
 
     # Materialize files
-    copy_or_hardlink(db_path, tmp_dir / "transport.sqlite")
+    copy_or_hardlink(app_db_path, tmp_dir / "app.sqlite")
+    copy_or_hardlink(transport_db_path, tmp_dir / "transport.sqlite")
 
     if build_meta_path.exists():
         copy_or_hardlink(build_meta_path, tmp_dir / "build_metadata.json")
 
-    if cfg.include_validation_summary:
-        summary = {
-            "bundle_id": bundle_id,
-            "version": version,
-            "passed": bool(all_passed),
-            "checks": validation_obj["checks"],
-        }
-        atomic_write_json(tmp_dir / "validation_summary.json", summary)
+    summary = {
+        "bundle_id": bundle_id,
+        "version": version,
+        "passed": bool(all_passed),
+        "checks": validation_obj["checks"],
+    }
+    atomic_write_json(tmp_dir / "validation_summary.json", summary)
 
     # Finalize DB in-place in tmp dir (WAL -> single file)
-    _finalize_sqlite_in_place(tmp_dir / "transport.sqlite", cfg)
+    _finalize_sqlite_in_place(tmp_dir / "app.sqlite", cfg, optimize=True)
+    _finalize_sqlite_in_place(tmp_dir / "transport.sqlite", cfg, optimize=False)
 
     # Sources section
     for sid, p in raw_meta_paths.items():
@@ -216,7 +217,7 @@ def run_publish_bundle(
             build["deterministic"] = bm["deterministic"]
 
     # Stats from SQLite (contract optional object)
-    stats = _query_stats(tmp_dir / "transport.sqlite")
+    stats = _query_stats(tmp_dir / "app.sqlite")
 
     # Create manifest *after* all files exist (we’ll fill files list later)
     # First write a placeholder; then compute file list and write final manifest.
@@ -272,6 +273,7 @@ def run_publish_bundle(
     # Optional signatures
     sha_entries: dict[str, str] = {}
     sha_entries["manifest.json"] = sha256_file(manifest_path).sha256
+    sha_entries["app.sqlite"] = sha256_file(tmp_dir / "app.sqlite").sha256
     sha_entries["transport.sqlite"] = sha256_file(tmp_dir / "transport.sqlite").sha256
 
     if (tmp_dir / "build_metadata.json").exists():
@@ -284,21 +286,11 @@ def run_publish_bundle(
         ).sha256
 
     if do_sign and priv_path is not None and signing_pub_b64 is not None:
-        # Sign manifest bytes exactly
+        # Sign manifest bytes exactly (single default behavior)
         mbytes = serialize_manifest_bytes(manifest)
-        if cfg.sign_targets in ("manifest", "both"):
-            sig = sign_bytes_ed25519(payload=mbytes, private_key_path=priv_path)
-            atomic_write_bytes(tmp_dir / "manifest.sig", sig)
-            sha_entries["manifest.sig"] = sha256_file(tmp_dir / "manifest.sig").sha256
-
-        # For DB: sign its sha256 (avoid loading huge DB into RAM)
-        if cfg.sign_targets in ("db", "both"):
-            db_sha = sha_entries["transport.sqlite"].encode("utf-8")
-            sig = sign_bytes_ed25519(payload=db_sha, private_key_path=priv_path)
-            atomic_write_bytes(tmp_dir / "transport.sqlite.sig", sig)
-            sha_entries["transport.sqlite.sig"] = sha256_file(
-                tmp_dir / "transport.sqlite.sig"
-            ).sha256
+        sig = sign_bytes_ed25519(payload=mbytes, private_key_path=priv_path)
+        atomic_write_bytes(tmp_dir / "manifest.sig", sig)
+        sha_entries["manifest.sig"] = sha256_file(tmp_dir / "manifest.sig").sha256
 
         atomic_write_bytes(
             tmp_dir / "public_key.b64.txt", (signing_pub_b64 + "\n").encode("utf-8")

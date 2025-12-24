@@ -1,22 +1,19 @@
--- Fares for CTB bus route (default short_name = '9'), including origin/destination sequences and fare products.
--- Parameters:
---   {route_short_name} (default '9')
+-- Fare segments for CTB bus route (compressed representation).
 WITH bus_route AS (
-  SELECT route_id, route_key, route_short_name
-  FROM routes
-  WHERE mode = 'bus'
-    AND operator_id = 'operator:CTB'
-    AND route_short_name = '{route_short_name}'
+  SELECT r.route_id
+  FROM routes r
+  JOIN operators o ON o.operator_pk = r.operator_pk
+  WHERE o.operator_code = 'CTB'
+    AND r.route_short_name = '{route_short_name}'
 )
 SELECT
-  r.route_key,
-  fr.rule_key,
-  fr.origin_seq,
-  fr.destination_seq,
-  fa.amount_cents,
-  fa.is_default
-FROM fare_rules fr
-JOIN bus_route r ON r.route_id = fr.route_id
-JOIN fare_amounts fa ON fa.fare_rule_id = fr.fare_rule_id
-ORDER BY fr.rule_key, fa.fare_product_id
-LIMIT 100;
+  fs.route_id,
+  fs.fare_product_id,
+  fs.origin_seq,
+  fs.dest_from_seq,
+  fs.dest_to_seq,
+  fs.amount_cents
+FROM fare_segments fs
+JOIN bus_route r ON r.route_id = fs.route_id
+ORDER BY fs.route_id, fs.fare_product_id, fs.origin_seq, fs.dest_from_seq
+LIMIT 200;

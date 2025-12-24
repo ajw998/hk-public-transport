@@ -21,6 +21,7 @@ from hk_public_transport_etl.stages import (
     stage_normalize,
     stage_parse,
     stage_publish,
+    stage_serve,
     stage_validate,
 )
 from rich.console import Console
@@ -101,6 +102,7 @@ _STAGE_FNS: dict[str, Callable[[Any], object]] = {
     "normalize": stage_normalize,
     "validate": stage_validate,
     "commit": stage_commit,
+    "serve": stage_serve,
     "publish": stage_publish,
 }
 
@@ -110,8 +112,9 @@ _PIPELINES: dict[str, tuple[str, ...]] = {
     "normalize": ("normalize",),
     "validate": ("validate",),
     "commit": ("commit",),
+    "serve": ("serve",),
     "publish": ("publish",),
-    "run": ("fetch", "parse", "normalize", "validate", "commit", "publish"),
+    "run": ("fetch", "parse", "normalize", "validate", "commit", "serve", "publish"),
 }
 
 

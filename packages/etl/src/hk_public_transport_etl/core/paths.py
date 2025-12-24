@@ -73,6 +73,9 @@ class DataLayout:
     def transport_sqlite(self, source_id: str, version: str) -> Path:
         return self.out(source_id, version) / "transport.sqlite"
 
+    def app_sqlite(self, source_id: str, version: str) -> Path:
+        return self.out(source_id, version) / "app.sqlite"
+
     def manifest_json(self, source_id: str, version: str) -> Path:
         return self.out(source_id, version) / "manifest.json"
 
