@@ -2,7 +2,7 @@
 WITH bus_route AS (
   SELECT r.route_id
   FROM routes r
-  JOIN operators o ON o.operator_pk = r.operator_pk
+  JOIN operators o ON o.operator_id = r.operator_id
   WHERE o.operator_code = 'CTB'
     AND r.route_short_name = '{route_short_name}'
 ),

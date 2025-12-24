@@ -140,8 +140,6 @@ def build_sqlite_bundle(params: BuildBundleParams) -> dict[str, Any]:
             timings["headway_resolve_seconds"] = time.perf_counter() - t2b
             row_counts["pattern_headways"] = int(headway_stats.inserted_rows)
 
-        # TODO: Build FTS
-
         # Meta rows
         t3 = time.perf_counter()
         _populate_meta_row(

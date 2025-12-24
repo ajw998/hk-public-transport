@@ -10,7 +10,7 @@ CREATE TABLE meta (
 );
 
 CREATE TABLE operators (
-  operator_pk       INTEGER PRIMARY KEY,
+  operator_id       INTEGER PRIMARY KEY,
   operator_code     TEXT NOT NULL UNIQUE,
   operator_name_en  TEXT NOT NULL,
   operator_name_tc  TEXT,
@@ -37,7 +37,7 @@ CREATE INDEX idx_places_type_mode ON places(place_type_id, primary_mode_id);
 
 CREATE TABLE routes (
   route_id             INTEGER PRIMARY KEY,
-  operator_pk          INTEGER NOT NULL REFERENCES operators(operator_pk),
+  operator_id          INTEGER NOT NULL REFERENCES operators(operator_id),
   mode_id              INTEGER NOT NULL,
 
   route_short_name     TEXT,
@@ -52,7 +52,7 @@ CREATE TABLE routes (
   upstream_route_id    TEXT
 );
 
-CREATE INDEX idx_routes_op_short ON routes(operator_pk, route_short_name);
+CREATE INDEX idx_routes_op_short ON routes(operator_id, route_short_name);
 CREATE INDEX idx_routes_mode_short ON routes(mode_id, route_short_name);
 
 CREATE TABLE route_patterns (

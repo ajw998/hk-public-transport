@@ -188,7 +188,7 @@ def run_build_app_sqlite(
 
                 _insert_many(
                     app,
-                    "INSERT INTO operators(operator_pk, operator_code, operator_name_en, operator_name_tc, operator_name_sc) "
+                    "INSERT INTO operators(operator_id, operator_code, operator_name_en, operator_name_tc, operator_name_sc) "
                     "VALUES (?,?,?,?,?);",
                     ops_insert,
                 )
@@ -234,7 +234,7 @@ def run_build_app_sqlite(
             app.execute(
                 f"""
                 INSERT INTO routes(
-                  route_id, operator_pk, mode_id,
+                  route_id, operator_id, mode_id,
                   route_short_name,
                   origin_text_en, origin_text_tc, origin_text_sc,
                   destination_text_en, destination_text_tc, destination_text_sc,
