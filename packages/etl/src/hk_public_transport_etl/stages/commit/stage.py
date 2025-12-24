@@ -70,6 +70,7 @@ def stage_commit(ctx: RunContext) -> CommitStageOutput:
     routes_fares_source_id = str(
         ctx.meta.get("routes_fares_source_id") or "td_routes_fares_xml"
     )
+    headway_mode = str(ctx.meta.get("headway_mode") or "full")
 
     specs = _select_specs(ctx, version=version)
 
@@ -129,6 +130,7 @@ def stage_commit(ctx: RunContext) -> CommitStageOutput:
         cfg=cfg,
         bundle_id=bundle_id,
         routes_fares_source_id=routes_fares_source_id,
+        headway_mode=headway_mode,
     )
 
     ctx.emit(

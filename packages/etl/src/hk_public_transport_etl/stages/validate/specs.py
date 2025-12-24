@@ -216,15 +216,6 @@ def _canonical_base_spec() -> ValidationSpec:
             only_check_non_null=True,
             hint_join_keys=("fare_rule_id", "route_id"),
         ),
-        ForeignKeySpec(
-            child_table="fare_rules",
-            child_col=("pattern_id",),
-            parent_table="route_patterns",
-            parent_col="pattern_id",
-            code="FARE_RULE_MISSING_PATTERN",
-            only_check_non_null=True,
-            hint_join_keys=("fare_rule_id", "pattern_id"),
-        ),
     ]
 
     core = frozenset(

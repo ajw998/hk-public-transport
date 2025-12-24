@@ -156,19 +156,14 @@ CREATE TABLE fare_rules (
   operator_id            TEXT NOT NULL REFERENCES operators(operator_id),
   mode                   TEXT NOT NULL CHECK (mode IN ('bus','gmb','mtr','lightrail','mtr_bus','ferry','tram','peak_tram')),
 
-  route_id               INTEGER REFERENCES routes(route_id),
-  pattern_id             INTEGER REFERENCES route_patterns(pattern_id),
+  route_id               INTEGER NOT NULL REFERENCES routes(route_id),
 
   origin_seq             INTEGER CHECK (origin_seq IS NULL OR origin_seq >= 1),
   destination_seq        INTEGER CHECK (destination_seq IS NULL OR destination_seq >= 1)
 
-  CHECK (
-    route_id IS NOT NULL
-    OR pattern_id IS NOT NULL
-  )
 );
 
-CREATE INDEX idx_fare_rules_route    ON fare_rules(route_id, pattern_id);
+CREATE INDEX idx_fare_rules_route    ON fare_rules(route_id);
 
 CREATE TABLE fare_amounts (
   fare_rule_id           INTEGER NOT NULL REFERENCES fare_rules(fare_rule_id) ON DELETE CASCADE,

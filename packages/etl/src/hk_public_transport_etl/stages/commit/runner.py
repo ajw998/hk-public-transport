@@ -3,13 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from hk_public_transport_etl.core.json import stable_json_dumps
-from hk_public_transport_etl.core.paths import DataLayout
+from hk_public_transport_etl.core import DataLayout, stable_json_dumps
 from hk_public_transport_etl.registry import SourceSpec
 
 from .config import CommitConfig
 from .ddl import load_canonical_ddl, load_schema_version
-from .sql_writer import build_sqlite_bundle
+from .sql_writer import BuildBundleParams, build_sqlite_bundle
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,6 +26,7 @@ def run_commit_bundle(
     cfg: CommitConfig | None = None,
     bundle_id: str = "hk_public_transport",
     routes_fares_source_id: str = "td_routes_fares_xml",
+    headway_mode: str = "full",
 ) -> CommitResult:
     cfg = cfg or CommitConfig()
 
@@ -85,16 +85,19 @@ def run_commit_bundle(
     )
 
     build_sqlite_bundle(
-        table_inputs=table_inputs,
-        validation_reports=validation_reports,
-        ddl_sql=ddl_sql,
-        schema_version=schema_version,
-        out_path=sqlite_path,
-        bundle_id=bundle_id,
-        bundle_version=version,
-        cfg=cfg,
-        routes_fares_source_id=routes_fares_source_id,
-        map_route_source=map_route_pq,
+        BuildBundleParams(
+            table_inputs=table_inputs,
+            validation_reports=validation_reports,
+            ddl_sql=ddl_sql,
+            schema_version=schema_version,
+            out_path=sqlite_path,
+            bundle_id=bundle_id,
+            bundle_version=version,
+            cfg=cfg,
+            routes_fares_source_id=routes_fares_source_id,
+            map_route_source=map_route_pq,
+            headway_mode=headway_mode,
+        )
     )
 
     return CommitResult(

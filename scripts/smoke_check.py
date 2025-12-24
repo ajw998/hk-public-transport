@@ -11,6 +11,26 @@ def run_query(
     con: duckdb.DuckDBPyConnection, sql_path: Path, route_short_name: str
 ) -> None:
     sql = sql_path.read_text("utf-8").replace("{route_short_name}", route_short_name)
+    headway_tables = {
+        "headway_trips",
+        "headway_stop_times",
+        "headway_frequencies",
+        "pattern_headways",
+        "service_calendars",
+        "service_exceptions",
+    }
+    if any(t in sql for t in headway_tables):
+        existing = {
+            row[0]
+            for row in con.execute(
+                "SELECT name FROM sqlite_master WHERE type='table';"
+            ).fetchall()
+        }
+        missing = [t for t in headway_tables if t in sql and t not in existing]
+        if missing:
+            raise SystemExit(
+                f"Headway tables missing ({', '.join(missing)}); rerun pipeline with --headway full."
+            )
     print(f"\n-- {sql_path.name} --")
     df = con.execute(sql).pl()
     with pl.Config(
@@ -56,6 +76,14 @@ def main() -> int:
     con = duckdb.connect()
     con.execute(f"ATTACH '{db_path.as_posix()}' AS db (TYPE SQLITE);")
     con.execute("SET search_path = db.main;")
+
+    # Bundle metadata summary
+    meta_df = con.execute("SELECT * FROM meta").pl()
+    db_size_bytes = db_path.stat().st_size
+    print("\n-- bundle metadata --")
+    with pl.Config(tbl_width_chars=2000):
+        print(meta_df)
+    print(f"DB size: {db_size_bytes} bytes ({db_size_bytes/1024/1024:.2f} MB)")
 
     for sql_path in sorted(scripts_dir.glob("*.sql")):
         if sql_path.is_file():

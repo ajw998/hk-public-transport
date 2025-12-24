@@ -37,6 +37,7 @@ class _CommonArgs:
     config_dir: str | None
     version: str
     sources: list[str] | None
+    headway: str
 
 
 def _add_common_args(p: argparse.ArgumentParser) -> None:
@@ -54,6 +55,12 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
         action="append",
         dest="sources",
         help="Only run for this source_id (repeatable). If omitted, uses the registry list.",
+    )
+    p.add_argument(
+        "--headway",
+        choices=("full", "partial", "none"),
+        default="full",
+        help="Headway handling: full (default), partial (pattern_headways + service_exceptions only), none (drop headway tables).",
     )
 
 
@@ -84,6 +91,7 @@ def _common(args: argparse.Namespace) -> _CommonArgs:
         config_dir=(str(args.config_dir) if args.config_dir else None),
         version=str(args.version),
         sources=list(args.sources) if args.sources else None,
+        headway=str(args.headway),
     )
 
 
@@ -154,6 +162,7 @@ def main(argv: list[str] | None = None) -> int:
         "version": common.version,
         "config_dir": common.config_dir,
         "source_ids": common.sources,
+        "headway_mode": common.headway,
     }
 
     console.print(

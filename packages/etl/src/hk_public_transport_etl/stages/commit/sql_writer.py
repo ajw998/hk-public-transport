@@ -6,7 +6,7 @@ import os
 import sqlite3
 import tempfile
 import time
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Iterable, Iterator, Mapping
 
@@ -27,30 +27,66 @@ from .config import CommitConfig
 from .resolvers import load_temp_map_route_source, resolve_pattern_headways
 
 
-def build_sqlite_bundle(
-    *,
-    table_inputs: Mapping[str, Path],
-    validation_reports: Mapping[str, Path],
-    ddl_sql: str,
-    schema_version: int,
-    out_path: Path,
-    bundle_id: str,
-    bundle_version: str,
-    cfg: CommitConfig | None = None,
-    routes_fares_source_id: str = "td_routes_fares_xml",
-    map_route_source: Path,
-) -> dict[str, Any]:
+@dataclass(frozen=True, slots=True)
+class BuildBundleParams:
+    table_inputs: Mapping[str, Path]
+    validation_reports: Mapping[str, Path]
+    ddl_sql: str
+    schema_version: int
+    out_path: Path
+    bundle_id: str
+    bundle_version: str
+    cfg: CommitConfig | None = None
+    routes_fares_source_id: str = "td_routes_fares_xml"
+    map_route_source: Path | None = None
+    headway_mode: str = "full"
+
+
+def build_sqlite_bundle(params: BuildBundleParams) -> dict[str, Any]:
     """
     Builds a single SQLite bundle from normalized parquet tables.
     Returns build_metadata
     """
-    cfg = cfg or CommitConfig()
+    cfg = params.cfg or CommitConfig()
+    out_path = params.out_path
+    headway_mode = params.headway_mode.lower()
+    routes_fares_source_id = params.routes_fares_source_id
+    map_route_source = params.map_route_source
+    ddl_sql = params.ddl_sql
+    schema_version = params.schema_version
+    bundle_id = params.bundle_id
+    bundle_version = params.bundle_version
+    table_inputs = params.table_inputs
+    validation_reports = params.validation_reports
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     tmp_path = _make_temp_db_path(out_path)
 
     timings: dict[str, float] = {}
     row_counts: dict[str, int] = {}
+    match headway_mode:
+        case "full":
+            drop_on_import: set[str] = set()
+            drop_after: set[str] = set()
+            resolve_headways = True
+        case "partial":
+            drop_on_import = set()
+            drop_after = {"headway_frequencies", "headway_trips", "headway_stop_times"}
+            resolve_headways = True
+        case "none":
+            drop_on_import = {
+                "service_calendars",
+                "service_exceptions",
+                "headway_frequencies",
+                "headway_trips",
+                "headway_stop_times",
+                "pattern_headways",
+            }
+            drop_after = set(drop_on_import)
+            resolve_headways = False
+        case _:
+            raise ValueError(f"Unknown headway mode: {headway_mode}")
 
     t0 = time.perf_counter()
     conn = sqlite3.connect(tmp_path, isolation_level=None)
@@ -71,6 +107,8 @@ def build_sqlite_bundle(
                 if table_name == "pattern_headways":
                     # always derived; ignore any parquet version
                     continue
+                if table_name in drop_on_import:
+                    continue
                 df = pl.read_parquet(table_inputs[table_name])
                 row_counts[table_name] = _insert_table(
                     conn, table_name, df, batch_rows=cfg.batch_rows
@@ -86,15 +124,21 @@ def build_sqlite_bundle(
         # Derived rows
         t2b = time.perf_counter()
 
-        load_temp_map_route_source(conn, parquet_path=map_route_source)
+        headway_stats = HeadwayResolveStats(0, 0, 0, 0, 0)
 
-        headway_stats = resolve_pattern_headways(
-            conn,
-            routes_fares_source_id=routes_fares_source_id,
-            create_debug_tables=cfg.create_headway_debug_tables,
-        )
-        timings["headway_resolve_seconds"] = time.perf_counter() - t2b
-        row_counts["pattern_headways"] = int(headway_stats.inserted_rows)
+        if resolve_headways:
+            if map_route_source is None:
+                raise CommitError(
+                    "map_route_source is required when resolving headways"
+                )
+            load_temp_map_route_source(conn, parquet_path=map_route_source)
+            headway_stats = resolve_pattern_headways(
+                conn,
+                routes_fares_source_id=routes_fares_source_id,
+                create_debug_tables=cfg.create_headway_debug_tables,
+            )
+            timings["headway_resolve_seconds"] = time.perf_counter() - t2b
+            row_counts["pattern_headways"] = int(headway_stats.inserted_rows)
 
         # TODO: Build FTS
 
@@ -119,6 +163,10 @@ def build_sqlite_bundle(
         _apply_final_pragmas(conn, cfg)
         sql_integrity_checks(conn)
         timings["checks_seconds"] = time.perf_counter() - t5
+
+        # Drop headway tables per mode after checks (tables removed from final bundle)
+        for tbl in sorted(drop_after):
+            conn.execute(f"DROP TABLE IF EXISTS {tbl};")
 
         timings["total_seconds"] = time.perf_counter() - t0
 

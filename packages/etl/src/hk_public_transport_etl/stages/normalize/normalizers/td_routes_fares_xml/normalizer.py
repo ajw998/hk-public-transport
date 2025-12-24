@@ -730,14 +730,12 @@ def _normalize_fares_for_mode(
             return_dtype=pl.Utf8,
         )
         .alias("rule_key"),
-        pl.lit(None, dtype=pl.Int64).alias("pattern_id"),
     ).select(
         [
             "rule_key",
             "operator_id",
             "mode",
             "route_key",
-            "pattern_id",
             "origin_seq",
             "destination_seq",
             "price",

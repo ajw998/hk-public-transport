@@ -15,6 +15,12 @@ uv run python -m hk_public_transport_etl.cli run
 
 # You can also run specific pipeline stages (fetch, parse, normalize, validate, commit, publish)
 uv run python -m hk_public_transport_etl.cli normalize
+
+# Control headway inclusion
+# Full (default): all headway tables
+# Partial: pattern_headways and service_exceptions
+# None: drop headway tables
+uv run python -m hk_public_transport_etl.cli run --headway partial
 ```
 
 Outputs are placed under `data/` (override via `HK_PUBLIC_TRANSPORT_DATA_ROOT`). 
