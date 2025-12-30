@@ -6,6 +6,7 @@ from typing import TypedDict
 
 from hk_public_transport_etl.core.paths import DataLayout
 from hk_public_transport_etl.pipeline import RunContext
+from hk_public_transport_etl.pipeline.events import EventType
 
 from .runner import run_build_app_sqlite
 
@@ -50,7 +51,7 @@ def stage_serve(ctx: RunContext) -> ServeStageOutput:
     )
 
     ctx.emit(
-        "serve.finish",
+        EventType.SERVE_FINISH,
         stage="serve",
         version=version,
         bundle_id=bundle_id,

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import TypedDict
 
 from hk_public_transport_etl.pipeline import RunContext
+from hk_public_transport_etl.pipeline.events import EventType
 
 from .config import PublishConfig
 from .runner import run_publish_bundle
@@ -30,7 +31,12 @@ def stage_publish(ctx: RunContext) -> StagePublishResult:
         overwrite=bool(ctx.meta.get("overwrite", True)),
     )
 
-    ctx.emit("publish.start", stage="publish", version=version, bundle_id=cfg.bundle_id)
+    ctx.emit(
+        EventType.PUBLISH_START,
+        stage="publish",
+        version=version,
+        bundle_id=cfg.bundle_id,
+    )
 
     out = run_publish_bundle(
         version=version,
@@ -40,7 +46,10 @@ def stage_publish(ctx: RunContext) -> StagePublishResult:
     )
 
     ctx.emit(
-        "publish.finish", stage="publish", version=version, out_dir=str(out.out_dir)
+        EventType.PUBLISH_FINISH,
+        stage="publish",
+        version=version,
+        out_dir=str(out.out_dir),
     )
 
     return {

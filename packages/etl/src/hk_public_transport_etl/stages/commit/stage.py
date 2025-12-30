@@ -5,6 +5,7 @@ from typing import TypedDict
 
 from hk_public_transport_etl.core.paths import DataLayout
 from hk_public_transport_etl.pipeline import RunContext
+from hk_public_transport_etl.pipeline.events import EventType
 from hk_public_transport_etl.registry.loader import (
     get_source_registry,
     resolve_config_dir,
@@ -49,7 +50,7 @@ def _select_specs(ctx: RunContext, *, version: str) -> list[SourceSpec]:
         raise ValueError("No sources selected (registry empty or filtered to nothing).")
 
     ctx.emit(
-        "commit.plan",
+        EventType.COMMIT_PLAN,
         stage="commit",
         config_dir=str(cfg_dir),
         version=version,
@@ -113,7 +114,7 @@ def stage_commit(ctx: RunContext) -> CommitStageOutput:
         )
 
     ctx.emit(
-        "commit.start",
+        EventType.COMMIT_START,
         stage="commit",
         version=version,
         bundle_id=bundle_id,
@@ -134,7 +135,7 @@ def stage_commit(ctx: RunContext) -> CommitStageOutput:
     )
 
     ctx.emit(
-        "commit.finish",
+        EventType.COMMIT_FINISH,
         stage="commit",
         version=version,
         bundle_id=bundle_id,

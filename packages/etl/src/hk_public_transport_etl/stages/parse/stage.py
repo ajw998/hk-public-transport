@@ -5,6 +5,7 @@ from typing import Any
 
 from hk_public_transport_etl.core.paths import DataLayout
 from hk_public_transport_etl.pipeline import RunContext
+from hk_public_transport_etl.pipeline.events import EventType
 from hk_public_transport_etl.registry.loader import (
     get_source_registry,
     resolve_config_dir,
@@ -35,7 +36,7 @@ def stage_parse(ctx: RunContext) -> dict[str, Any]:
         raise ValueError("No sources selected (registry empty or filtered to nothing).")
 
     ctx.emit(
-        "parse.plan",
+        EventType.PARSE_PLAN,
         stage="parse",
         config_dir=str(cfg_dir),
         version=version,
@@ -47,7 +48,7 @@ def stage_parse(ctx: RunContext) -> dict[str, Any]:
         reason = skip_reason(sid)
         if reason is not None:
             ctx.emit(
-                "parse.source.skip",
+                EventType.PARSE_SOURCE_SKIP,
                 stage="parse",
                 source_id=sid,
                 version=version,
@@ -64,7 +65,12 @@ def stage_parse(ctx: RunContext) -> dict[str, Any]:
             continue
 
         spec = reg[sid]
-        ctx.emit("parse.source.start", stage="parse", source_id=sid, version=version)
+        ctx.emit(
+            EventType.PARSE_SOURCE_START,
+            stage="parse",
+            source_id=sid,
+            version=version,
+        )
 
         ds = run_parse_source(spec=spec, version=version, data_root=Path(ctx.data_root))
 
@@ -79,7 +85,7 @@ def stage_parse(ctx: RunContext) -> dict[str, Any]:
         )
 
         ctx.emit(
-            "parse.source.finish",
+            EventType.PARSE_SOURCE_FINISH,
             stage="parse",
             source_id=sid,
             version=version,

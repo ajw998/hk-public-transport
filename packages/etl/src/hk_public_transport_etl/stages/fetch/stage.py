@@ -6,6 +6,7 @@ from typing import Any
 import httpx
 from hk_public_transport_etl.core.paths import DataLayout
 from hk_public_transport_etl.pipeline.context import RunContext
+from hk_public_transport_etl.pipeline.events import EventType
 from hk_public_transport_etl.registry.loader import (
     get_source_registry,
     resolve_config_dir,
@@ -41,7 +42,7 @@ def stage_fetch(ctx: RunContext) -> dict[str, Any]:
     layout = DataLayout(root=Path(ctx.data_root))
 
     ctx.emit(
-        "fetch.plan",
+        EventType.FETCH_PLAN,
         stage="fetch",
         config_dir=str(cfg_dir),
         version=version,
@@ -62,7 +63,10 @@ def stage_fetch(ctx: RunContext) -> dict[str, Any]:
             spec = reg[sid]
 
             ctx.emit(
-                "fetch.source.start", stage="fetch", source_id=sid, version=version
+                EventType.FETCH_SOURCE_START,
+                stage="fetch",
+                source_id=sid,
+                version=version,
             )
 
             res = fetch_source(
@@ -87,7 +91,7 @@ def stage_fetch(ctx: RunContext) -> dict[str, Any]:
             )
 
             ctx.emit(
-                "fetch.source.finish",
+                EventType.FETCH_SOURCE_FINISH,
                 stage="fetch",
                 source_id=sid,
                 artifacts=len(artifacts),

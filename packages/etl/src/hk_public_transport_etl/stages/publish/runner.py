@@ -233,7 +233,7 @@ def run_publish_bundle(
         _require_file(priv_path, label="signing_private_key_path")
         signing_pub_b64 = public_key_b64_from_private_key(private_key_path=priv_path)
 
-    # Build manifest now with current bundle files (sans manifest itself first)
+    # Build manifest now with current bundle files
     manifest = build_manifest(
         bundle_id=bundle_id,
         bundle_version=version,

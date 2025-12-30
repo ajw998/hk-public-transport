@@ -23,7 +23,7 @@ CREATE TABLE places (
   place_type             TEXT NOT NULL CHECK (
     place_type IN (
       'stop',            -- generic boarding/alighting point (bus/tram/lr/etc)
-      'station',         -- rail station (node; can have exits/platforms)
+      'station',         -- rail station
       'station_complex', -- complex/interchange grouping entity
       'pier',            -- ferry terminal/pier
       'platform',        -- platform (child of station)

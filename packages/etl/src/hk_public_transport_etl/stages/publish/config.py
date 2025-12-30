@@ -8,15 +8,11 @@ class PublishConfig:
     bundle_id: str = "hk_public_transport"
     schema_version: int = 1
     min_app_version: str = "0.1.0"
-
     refuse_on_failed_validation: bool = True
     fail_on_warn: bool = False
-
     # Allow re-publishing the same version by replacing the existing dir.
     overwrite: bool = True
-
     signing_private_key_path: str | None = None
-
     etl_version: str = "1.0.0"
     git_commit: str = "unknown"
     deterministic: bool = True

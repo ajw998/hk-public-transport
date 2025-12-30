@@ -13,9 +13,15 @@ from hk_public_transport_etl.core import (
 )
 
 from .context import RunContext
-from .events import EventSink, make_event, utc_now_iso
+from .events import EventSink, EventType, make_event, utc_now_iso
 from .report import build_run_report
-from .stage import FunctionStage, Stage, StageResult, run_stage
+from .stage import (
+    FunctionStage,
+    Stage,
+    StageResult,
+    format_duration_ms,
+    run_stage,
+)
 
 
 @dataclass(slots=True)
@@ -70,6 +76,7 @@ class PipelineRunner:
 
         Returns: (exit_code, report_path)
         """
+        meta = meta or {}
         rid = run_id or uuid.uuid4().hex
         run_root = Path(run_root) / rid
         run_root.mkdir(parents=True, exist_ok=True)
@@ -83,28 +90,33 @@ class PipelineRunner:
             data_root=Path(data_root),
             logger=self.logger,
             events=sink,
-            meta=meta or {},
+            meta=meta,
         )
 
         started_at = utc_now_iso()
         t0 = monotonic_ms()
 
-        ctx.events.emit(
-            make_event(type="run.start", run_id=rid, stage=None, **(meta or {}))
+        self.logger.info(
+            "Pipeline starting",
+            run_id=rid,
+            stages=[s.stage_id for s in self.stages],
+            data_root=str(ctx.data_root),
+            run_root=str(run_root),
+            meta_keys=sorted(meta.keys()),
         )
-        self.logger.info("Run Start")
+        ctx.events.emit(
+            make_event(event_type=EventType.RUN_START, run_id=rid, stage=None, **meta)
+        )
 
         results: list[StageResult] = []
 
-        for st in self.stages:
-            res = run_stage(ctx=ctx, stage=st)
+        total = len(self.stages)
+        for idx, st in enumerate(self.stages, start=1):
+            res = run_stage(ctx=ctx, stage=st, index=idx, total=total)
             results.append(res)
 
             if res.status == "failed" and self.cfg.stop_on_failure:
-                self.logger.error(
-                    "Stopping on first failure",
-                    extra={"stage": st.stage_id},
-                )
+                self.logger.error("Stopping on first failure", stage=st.stage_id)
                 break
 
         finished_at = utc_now_iso()
@@ -117,7 +129,7 @@ class PipelineRunner:
             duration_ms=duration,
             stage_results=results,
             events_jsonl=str(events_path),
-            meta=meta or {},
+            meta=meta,
         )
 
         report_json = run_root / "run_report.json"
@@ -125,7 +137,7 @@ class PipelineRunner:
 
         ctx.events.emit(
             make_event(
-                type="run.finish",
+                event_type=EventType.RUN_FINISH,
                 run_id=rid,
                 stage=None,
                 status=report.status,
@@ -137,7 +149,11 @@ class PipelineRunner:
 
         self.logger.info(
             "Run Complete",
-            extra={"duration_ms": duration},
+            duration_ms=duration,
+            duration=format_duration_ms(duration),
+            report=str(report_json),
+            events=str(events_path),
+            status=report.status,
         )
 
         exit_code = 0 if report.status == "success" else 1

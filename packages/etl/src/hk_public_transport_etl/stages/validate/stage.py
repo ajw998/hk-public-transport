@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import TypedDict
 
 from hk_public_transport_etl.pipeline import RunContext
+from hk_public_transport_etl.pipeline.events import EventType
 from hk_public_transport_etl.registry.loader import (
     get_source_registry,
     resolve_config_dir,
@@ -39,7 +40,7 @@ def stage_validate(ctx: RunContext) -> ValidateStageOutput:
         raise ValueError("No sources selected (registry empty or filtered to nothing).")
 
     ctx.emit(
-        "validate.plan",
+        EventType.VALIDATE_PLAN,
         stage="validate",
         config_dir=str(cfg_dir),
         version=version,
@@ -53,7 +54,10 @@ def stage_validate(ctx: RunContext) -> ValidateStageOutput:
     for sid in source_ids:
         spec = reg[sid]
         ctx.emit(
-            "validate.source.start", stage="validate", source_id=sid, version=version
+            EventType.VALIDATE_SOURCE_START,
+            stage="validate",
+            source_id=sid,
+            version=version,
         )
 
         exit_code, report_path = run_validate_source(
@@ -69,7 +73,7 @@ def stage_validate(ctx: RunContext) -> ValidateStageOutput:
             failed += 1
 
         ctx.emit(
-            "validate.source.finish",
+            EventType.VALIDATE_SOURCE_FINISH,
             stage="validate",
             source_id=sid,
             version=version,

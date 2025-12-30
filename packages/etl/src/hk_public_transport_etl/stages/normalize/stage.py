@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import TypedDict
 
 from hk_public_transport_etl.pipeline.context import RunContext
+from hk_public_transport_etl.pipeline.events import EventType
 from hk_public_transport_etl.registry.loader import (
     get_source_registry,
     resolve_config_dir,
@@ -47,7 +48,7 @@ def stage_normalize(ctx: RunContext) -> NormalizeStageOutput:
         raise ValueError("No sources selected (registry empty or filtered to nothing).")
 
     ctx.emit(
-        "normalize.plan",
+        EventType.NORMALIZE_PLAN,
         stage="normalize",
         config_dir=str(cfg_dir),
         version=version,
@@ -75,7 +76,10 @@ def stage_normalize(ctx: RunContext) -> NormalizeStageOutput:
 
         spec = reg[sid]
         ctx.emit(
-            "normalize.source.start", stage="normalize", source_id=sid, version=version
+            EventType.NORMALIZE_SOURCE_START,
+            stage="normalize",
+            source_id=sid,
+            version=version,
         )
 
         out = run_normalize_source(
@@ -105,7 +109,7 @@ def stage_normalize(ctx: RunContext) -> NormalizeStageOutput:
         )
         ok += 1
         ctx.emit(
-            "normalize.source.finish",
+            EventType.NORMALIZE_SOURCE_FINISH,
             stage="normalize",
             source_id=sid,
             version=version,

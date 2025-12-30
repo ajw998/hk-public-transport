@@ -4,7 +4,7 @@ from typing import Any
 
 from hk_public_transport_etl.core import ILogger, sha256_file
 
-from .events import EventSink
+from .events import EventSink, EventType
 from .types import ArtifactRef
 
 
@@ -32,8 +32,10 @@ class RunContext:
         """
         return self.logger.bind(stage=stage)
 
-    def emit(self, event: str, **kw: object) -> None:
-        self.logger.info(event, **kw)
+    def emit(self, event: EventType | str, **kw: object) -> None:
+        # Keep event chatter at debug level to leave console logs readable.
+        event_value = event.value if isinstance(event, EventType) else str(event)
+        self.logger.debug(event_value, event_type=event_value, **kw)
 
     # Convenience helpers that standardize artifact emission
     def record_artifact(
@@ -52,7 +54,7 @@ class RunContext:
             path=rel, bytes=size, sha256=digest.sha256, content_type=content_type
         )
         self.emit(
-            "artifact.written",
+            EventType.ARTIFACT_WRITTEN,
             stage=stage,
             path=art.path,
             bytes=art.bytes,

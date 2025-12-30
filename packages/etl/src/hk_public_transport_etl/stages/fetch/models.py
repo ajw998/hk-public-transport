@@ -35,7 +35,7 @@ class RawMetadata(BaseModel):
     version: str
     _artifact_map: dict[str, RawMetadataArtifact] = PrivateAttr(default_factory=dict)
 
-    def model_post_init(self, __context: object) -> None:
+    def model_post_init(self, _: object) -> None:
         self._artifact_map = {a.endpoint_id: a for a in self.artifacts}
 
     def by_endpoint(self) -> dict[str, RawMetadataArtifact]:
